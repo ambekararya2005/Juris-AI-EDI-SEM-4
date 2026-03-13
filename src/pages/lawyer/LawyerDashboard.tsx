@@ -1,6 +1,6 @@
-import React, { useEffect, useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Clock, CheckCircle, BookOpen, Star, TrendingUp, ArrowRight, AlertCircle } from 'lucide-react';
+import { Clock, CheckCircle, BookOpen, Star, TrendingUp } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, CartesianGrid, Legend } from 'recharts';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';

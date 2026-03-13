@@ -38,7 +38,7 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ requireAuth = true }) => {
-  const { isAuthenticated, user } = useAuth();
+  const { isAuthenticated } = useAuth();
   const location = useLocation();
 
   useEffect(() => {

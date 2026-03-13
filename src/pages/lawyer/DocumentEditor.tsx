@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useParams } from 'react-router-dom';
-import { Bold, Italic, Underline, MessageSquare, Lightbulb, Search, BookMarked, CheckCircle, AlertTriangle, Info, X } from 'lucide-react';
+import { Bold, Italic, Underline, MessageSquare, Lightbulb, Search, BookMarked, CheckCircle, AlertTriangle, Info } from 'lucide-react';
 import Card from '../../components/ui/Card';
 import Badge from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
@@ -37,7 +37,7 @@ const THREADS = [
 ];
 
 const DocumentEditor: React.FC = () => {
-  const { id } = useParams();
+  useParams();
   const [activeTab, setActiveTab] = useState<'suggestions' | 'precedents' | 'comments'>('suggestions');
   const [finalizeModal, setFinalizeModal] = useState(false);
   const [revisionModal, setRevisionModal] = useState(false);

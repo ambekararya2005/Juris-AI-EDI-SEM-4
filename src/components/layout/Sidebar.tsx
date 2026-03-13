@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { NavLink, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, FileText, FilePlus, BookOpen, ShieldAlert, Settings,
-  LogOut, ChevronLeft, ChevronRight, Scale, Gavel, Search, Library,
+  LogOut, ChevronLeft, ChevronRight, Scale, Search, Library,
   ClipboardList,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';

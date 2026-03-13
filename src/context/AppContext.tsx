@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useState, ReactNode } from 'react';
-import { CaseResult, ToastMessage } from '../types';
+import { ToastMessage } from '../types';
 import { mockNotifications as initialNotifications } from '../data/mockData';
 import { Notification } from '../types';
 

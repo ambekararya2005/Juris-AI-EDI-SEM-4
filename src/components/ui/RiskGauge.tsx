@@ -9,7 +9,6 @@ const RiskGauge: React.FC<RiskGaugeProps> = ({ score }) => {
   const radius = 80;
   const strokeWidth = 14;
   const circumference = Math.PI * radius; // half circle
-  const arcLength = (score / 100) * circumference;
 
   const getColor = () => {
     if (score >= 70) return '#C0392B';
