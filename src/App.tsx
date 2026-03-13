@@ -1,26 +1,69 @@
 import React from 'react';
-import logo from './logo.svg';
-import './App.css';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './context/AuthContext';
+import { AppProvider } from './context/AppContext';
+import Layout from './components/layout/Layout';
 
-function App() {
+// Auth pages
+import Login from './pages/auth/Login';
+
+// Client pages
+import ClientDashboard from './pages/client/ClientDashboard';
+import DocumentWizard from './pages/client/DocumentWizard';
+import DocumentSummary from './pages/client/DocumentSummary';
+import MyDocuments from './pages/client/MyDocuments';
+
+// Lawyer pages
+import LawyerDashboard from './pages/lawyer/LawyerDashboard';
+import ReviewQueue from './pages/lawyer/ReviewQueue';
+import DocumentEditor from './pages/lawyer/DocumentEditor';
+import CaseLawSearch from './pages/lawyer/CaseLawSearch';
+import CaseLibrary from './pages/lawyer/CaseLibrary';
+
+// Shared pages
+import ContractRisk from './pages/shared/ContractRisk';
+import DocumentViewer from './pages/shared/DocumentViewer';
+import Settings from './pages/shared/Settings';
+
+const App: React.FC = () => {
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.tsx</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <AuthProvider>
+      <AppProvider>
+        <BrowserRouter>
+          <Routes>
+            {/* Public */}
+            <Route path="/login" element={<Login />} />
+            <Route path="/" element={<Navigate to="/login" replace />} />
+
+            {/* Protected — with layout */}
+            <Route element={<Layout requireAuth={true} />}>
+              {/* Client routes */}
+              <Route path="/client/dashboard" element={<ClientDashboard />} />
+              <Route path="/client/documents" element={<MyDocuments />} />
+              <Route path="/client/documents/new" element={<DocumentWizard />} />
+              <Route path="/client/documents/:id" element={<DocumentViewer />} />
+              <Route path="/client/summarize" element={<DocumentSummary />} />
+              <Route path="/client/risk" element={<ContractRisk />} />
+
+              {/* Lawyer routes */}
+              <Route path="/lawyer/dashboard" element={<LawyerDashboard />} />
+              <Route path="/lawyer/queue" element={<ReviewQueue />} />
+              <Route path="/lawyer/review/:id" element={<DocumentEditor />} />
+              <Route path="/lawyer/search" element={<CaseLawSearch />} />
+              <Route path="/lawyer/library" element={<CaseLibrary />} />
+              <Route path="/lawyer/risk" element={<ContractRisk />} />
+
+              {/* Shared */}
+              <Route path="/settings" element={<Settings />} />
+            </Route>
+
+            {/* Catch all */}
+            <Route path="*" element={<Navigate to="/login" replace />} />
+          </Routes>
+        </BrowserRouter>
+      </AppProvider>
+    </AuthProvider>
   );
-}
+};
 
 export default App;
