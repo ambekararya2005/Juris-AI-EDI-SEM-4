@@ -14,7 +14,7 @@ const DOC_TYPES = [
   { id: 'Rental Agreement', icon: <Home size={28} />, desc: 'Lease agreement for residential or commercial property', label: 'Rental Agreement' },
 ];
 
-const DISTRICTS = ['Lahore', 'Karachi', 'Islamabad', 'Rawalpindi', 'Peshawar', 'Quetta', 'Multan', 'Faisalabad'];
+const DISTRICTS = ['Pune', 'Mumbai', 'Nashik', 'Nagpur', 'Aurangabad', 'Kolhapur', 'Solapur', 'Thane'];
 const BAIL_GROUNDS = ['First-time offender', 'Medical condition', 'Sole breadwinner', 'Completed investigation', 'Insufficient evidence', 'Bailable offence'];
 
 interface FormData {
@@ -41,7 +41,7 @@ const DocumentWizard: React.FC = () => {
   const [form, setForm] = useState<FormData>({
     docType: '',
     fullName: '', cnic: '', firNumber: '', policeStation: '',
-    district: 'Lahore', arrestDate: '', charges: '',
+    district: 'Pune', arrestDate: '', charges: '',
     grounds: ['First-time offender', 'Medical condition'],
     suretyName: '', suretyCnic: '', suretyRelationship: 'Brother',
     additionalFacts: 'The accused has been falsely implicated and was not present at the alleged scene of the crime.',
@@ -130,11 +130,11 @@ const DocumentWizard: React.FC = () => {
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
               <label className={labelCls}>Full Name of Accused</label>
-              <input className={inputCls} value={form.fullName} onChange={e => updateForm('fullName', e.target.value)} placeholder="Muhammad Imran Siddiqui" />
+              <input className={inputCls} value={form.fullName} onChange={e => updateForm('fullName', e.target.value)} placeholder="Rajesh Kumar Patil" />
             </div>
             <div>
-              <label className={labelCls}>CNIC Number</label>
-              <input className={inputCls} value={form.cnic} onChange={e => updateForm('cnic', e.target.value)} placeholder="35202-1234567-8" />
+              <label className={labelCls}>Aadhaar Number</label>
+              <input className={inputCls} value={form.cnic} onChange={e => updateForm('cnic', e.target.value)} placeholder="1234-5678-9012" />
             </div>
             <div>
               <label className={labelCls}>FIR Number</label>
@@ -142,7 +142,7 @@ const DocumentWizard: React.FC = () => {
             </div>
             <div>
               <label className={labelCls}>Police Station</label>
-              <input className={inputCls} value={form.policeStation} onChange={e => updateForm('policeStation', e.target.value)} placeholder="Gulberg, Lahore" />
+              <input className={inputCls} value={form.policeStation} onChange={e => updateForm('policeStation', e.target.value)} placeholder="Shivajinagar, Pune" />
             </div>
             <div>
               <label className={labelCls}>District</label>
@@ -156,7 +156,7 @@ const DocumentWizard: React.FC = () => {
             </div>
             <div className="col-span-2">
               <label className={labelCls}>Charge(s) Filed</label>
-              <textarea rows={3} className={inputCls} value={form.charges} onChange={e => updateForm('charges', e.target.value)} placeholder="Section 302 PPC (Murder)" />
+              <textarea rows={3} className={inputCls} value={form.charges} onChange={e => updateForm('charges', e.target.value)} placeholder="Section 302 IPC (Murder)" />
             </div>
           </div>
 
@@ -192,7 +192,7 @@ const DocumentWizard: React.FC = () => {
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className={labelCls}>Surety Name</label>
-              <input className={inputCls} value={form.suretyName} onChange={e => updateForm('suretyName', e.target.value)} placeholder="Muhammad Tariq" />
+              <input className={inputCls} value={form.suretyName} onChange={e => updateForm('suretyName', e.target.value)} placeholder="Suresh Patil" />
             </div>
             <div>
               <label className={labelCls}>Surety Relationship</label>
@@ -202,7 +202,7 @@ const DocumentWizard: React.FC = () => {
             </div>
             <div className="col-span-2">
               <label className={labelCls}>Surety CNIC</label>
-              <input className={inputCls} value={form.suretyCnic} onChange={e => updateForm('suretyCnic', e.target.value)} placeholder="35202-9876543-2" />
+              <input className={inputCls} value={form.suretyCnic} onChange={e => updateForm('suretyCnic', e.target.value)} placeholder="9876-5432-1098" />
             </div>
             <div className="col-span-2">
               <label className={labelCls}>Additional Facts</label>
@@ -230,7 +230,7 @@ const DocumentWizard: React.FC = () => {
               </div>
               <div className="text-center">
                 <p className="font-semibold text-dark-text text-lg">JurisAI is drafting your document...</p>
-                <p className="text-sm text-muted-text mt-1">Applying legal templates and Pakistani court formatting</p>
+                <p className="text-sm text-muted-text mt-1">Applying legal templates and Maharashtra court formatting</p>
               </div>
               <div className="w-64 h-1.5 bg-light-blue rounded-full overflow-hidden">
                 <div className="h-full bg-gold rounded-full animate-progress-fill" style={{ width: '60%', transition: 'width 2.5s ease-out' }} />
@@ -249,13 +249,13 @@ const DocumentWizard: React.FC = () => {
               {/* Legal Document Preview */}
               <div className="bg-surface-gray rounded-xl p-6 font-mono text-xs leading-relaxed text-dark-text mb-6 max-h-96 overflow-y-auto border border-border">
                 <div className="text-center mb-4">
-                  <div className="text-base font-bold text-navy font-sans">عدالت سیشن جج لاہور</div>
-                  <div className="text-sm font-bold tracking-wider mt-1">IN THE COURT OF SESSIONS JUDGE LAHORE</div>
+                  <div className="text-base font-bold text-navy font-sans">सत्र न्यायालय, पुणे</div>
+                  <div className="text-sm font-bold tracking-wider mt-1">IN THE COURT OF SESSIONS JUDGE PUNE</div>
                   <div className="mt-2 text-xs uppercase tracking-widest text-muted-text">
                     APPLICATION FOR BAIL BEFORE ARREST
                   </div>
                   <div className="mt-1 text-xs text-muted-text">
-                    Case No.: FIR {form.firNumber || '112/2026'} | Police Station: {form.policeStation || 'Gulberg'}
+                    Case No.: FIR {form.firNumber || '112/2026'} | Police Station: {form.policeStation || 'Shivajinagar'}
                   </div>
                 </div>
                 <pre className="whitespace-pre-wrap font-mono text-xs">{BAIL_APPLICATION_CONTENT}</pre>

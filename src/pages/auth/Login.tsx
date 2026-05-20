@@ -71,7 +71,7 @@ const Login: React.FC = () => {
             Legal intelligence,<br />reimagined.
           </h2>
           <p className="text-white/60 text-sm mb-10 leading-relaxed">
-            Pakistan's first AI-powered legal platform for document drafting, 
+            Maharashtra's first AI-powered legal platform for document drafting,
             case research, and contract risk analysis.
           </p>
 
@@ -186,7 +186,7 @@ const Login: React.FC = () => {
               <span className="text-sm font-medium text-dark-text group-hover:text-navy">
                 Demo as Client
               </span>
-              <span className="text-xs text-muted-text">Ayesha Malik</span>
+              <span className="text-xs text-muted-text">Priya Sharma</span>
             </button>
             <button
               onClick={() => handleDemo('lawyer')}
@@ -197,7 +197,7 @@ const Login: React.FC = () => {
               <span className="text-sm font-medium text-dark-text group-hover:text-gold">
                 Demo as Lawyer
               </span>
-              <span className="text-xs text-muted-text">Adnan Raza</span>
+              <span className="text-xs text-muted-text">Adv. Rahul Patil</span>
             </button>
           </div>
         </div>

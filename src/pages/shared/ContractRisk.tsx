@@ -108,7 +108,7 @@ const ContractRisk: React.FC = () => {
               <div className="flex-1">
                 <p className="text-xs text-muted-text mb-1">Analyzed Document</p>
                 <h2 className="font-serif text-lg font-bold text-dark-text mb-3">
-                  Supplier Agreement — AlphaTech vs. Zara Traders.pdf
+                  Supplier Agreement — TechNova Pvt. Ltd. vs. Zenith Traders.pdf
                 </h2>
                 <div className="flex flex-wrap gap-2">
                   <span className="px-3 py-1 rounded-full text-xs font-semibold bg-red-100 text-risk border border-red-200">

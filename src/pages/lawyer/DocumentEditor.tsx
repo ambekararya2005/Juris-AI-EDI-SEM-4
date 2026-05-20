@@ -71,8 +71,8 @@ const DocumentEditor: React.FC = () => {
           {[
             ['Accused', 'Imran Siddiqui'],
             ['FIR', '112/2026'],
-            ['Station', 'Gulberg, Lahore'],
-            ['Charge', 'Section 302 PPC'],
+            ['Station', 'Shivajinagar, Pune'],
+            ['Charge', 'Section 302 IPC'],
             ['Grounds', 'First-time offender, Medical condition'],
           ].map(([k, v]) => (
             <div key={k} className="mb-1.5">
@@ -116,17 +116,17 @@ const DocumentEditor: React.FC = () => {
           {/* Document Content */}
           <div className="flex-1 overflow-y-auto p-6 font-mono text-xs leading-relaxed text-dark-text relative">
             <div className="text-center mb-6">
-              <div className="text-xl font-bold text-navy font-sans mb-1">عدالت سیشن جج لاہور</div>
-              <div className="text-sm font-bold tracking-wider">IN THE COURT OF SESSIONS JUDGE LAHORE</div>
+              <div className="text-xl font-bold text-navy font-sans mb-1">सत्र न्यायालय, पुणे</div>
+              <div className="text-sm font-bold tracking-wider">IN THE COURT OF SESSIONS JUDGE PUNE</div>
               <div className="text-xs uppercase tracking-widest text-muted-text mt-1">APPLICATION FOR BAIL BEFORE ARREST</div>
-              <div className="text-xs text-muted-text">Case No. FIR 112/2026 Police Station Gulberg</div>
+              <div className="text-xs text-muted-text">Case No. FIR 112/2026 Police Station Shivajinagar</div>
             </div>
 
             <div className="relative">
               {/* Highlighted section */}
               <div className="bg-amber-50 border border-amber-200 rounded px-2 py-1 mb-3 relative group">
                 <p className="font-mono text-xs">
-                  <strong>4.</strong> That the Applicant suffers from a serious medical condition, namely Type-II Diabetes Mellitus with associated cardiovascular complications, as evidenced by medical certificates and treatment records from Services Hospital, Lahore.
+                  <strong>4.</strong> That the Applicant suffers from a serious medical condition, namely Type-II Diabetes Mellitus with associated cardiovascular complications, as evidenced by medical certificates and treatment records from KEM Hospital, Pune.
                 </p>
                 {/* Comment bubble */}
                 <div className="absolute right-2 top-1 bg-navy text-white text-[10px] rounded-lg px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity max-w-[200px] z-10">

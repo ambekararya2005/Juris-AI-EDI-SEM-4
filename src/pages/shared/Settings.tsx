@@ -10,7 +10,7 @@ const PLAN_FEATURES = [
   { label: 'Lawyer Reviews', basic: 'Paid per doc', pro: '5 included', enterprise: '20 included' },
   { label: 'Case Law Search', basic: '10/month', pro: 'Unlimited', enterprise: 'Unlimited' },
   { label: 'Risk Analysis', basic: '1/month', pro: 'Unlimited', enterprise: 'Unlimited' },
-  { label: 'Price', basic: 'Free', pro: 'PKR 2,499/mo', enterprise: 'PKR 9,999/mo' },
+  { label: 'Price', basic: 'Free', pro: '₹2,499/mo', enterprise: '₹9,999/mo' },
 ];
 
 const Settings: React.FC = () => {

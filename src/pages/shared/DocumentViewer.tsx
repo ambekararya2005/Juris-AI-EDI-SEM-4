@@ -36,8 +36,8 @@ const DocumentViewer: React.FC = () => {
 
         <div className="font-mono text-xs leading-relaxed text-dark-text">
           <div className="text-center mb-6">
-            <div className="text-xl font-bold text-navy font-sans mb-1">عدالت سیشن جج لاہور</div>
-            <div className="text-sm font-bold tracking-wider">IN THE COURT OF SESSIONS JUDGE LAHORE</div>
+            <div className="text-xl font-bold text-navy font-sans mb-1">सत्र न्यायालय, पुणे</div>
+            <div className="text-sm font-bold tracking-wider">IN THE COURT OF SESSIONS JUDGE PUNE</div>
             <div className="text-xs uppercase tracking-widest text-muted-text mt-1">APPLICATION FOR BAIL BEFORE ARREST</div>
           </div>
           <pre className="whitespace-pre-wrap">{BAIL_APPLICATION_CONTENT}</pre>

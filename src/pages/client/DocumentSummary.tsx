@@ -6,7 +6,7 @@ import ProgressBar from '../../components/ui/ProgressBar';
 
 const QA_RESPONSES: Record<string, string> = {
   default: 'Based on the document analysis, this agreement contains several standard commercial clauses with some risk areas you should be aware of. I recommend having a lawyer review Clauses 8.1 and 12.3 specifically.',
-  delivery: 'According to Clause 4.2, AlphaTech (Supplier) is responsible for the delivery of goods to Zara Traders\' designated warehouse within 14 business days of each confirmed purchase order.',
+  delivery: 'According to Clause 4.2, TechNova Pvt. Ltd. (Supplier) is responsible for the delivery of goods to Zenith Traders\' designated warehouse within 14 business days of each confirmed purchase order.',
   payment: 'Clause 7.1 specifies a 2% monthly surcharge on all overdue amounts. Payment terms are net-30 from invoice date, with invoices issued upon dispatch of goods.',
   termination: 'Under Clause 14.4, either party may terminate the agreement with 5 business days written notice. For cause termination, no notice period is specified, which is a risk flag.',
   dispute: 'The agreement does not contain a dispute resolution clause, which is flagged as a HIGH risk item. This leaves parties without a structured process for resolving conflicts.',
@@ -18,7 +18,7 @@ const SUMMARY_SECTIONS = [
     title: 'Overview',
     content: (
       <p className="text-sm text-dark-text leading-relaxed">
-        This is a commercial supply agreement between AlphaTech (Pvt) Ltd as Supplier and Zara Traders as Buyer, dated January 15, 2026. The agreement governs the supply of technology hardware components over a 12-month period with an estimated contract value of PKR 18,000,000. The agreement is governed by no specific jurisdiction and lacks a dispute resolution mechanism.
+        This is a commercial supply agreement between TechNova Pvt. Ltd. as Supplier and Zenith Traders as Buyer, dated January 15, 2026. The agreement governs the supply of technology hardware components over a 12-month period with an estimated contract value of ₹1,80,00,000. The agreement is governed by no specific jurisdiction and lacks a dispute resolution mechanism.
       </p>
     ),
   },
@@ -35,8 +35,8 @@ const SUMMARY_SECTIONS = [
           </tr>
         </thead>
         <tbody className="divide-y divide-border">
-          <tr><td className="px-3 py-2 font-medium">AlphaTech (Pvt) Ltd</td><td className="px-3 py-2">Supplier</td><td className="px-3 py-2">Kamran Malik, CEO</td></tr>
-          <tr><td className="px-3 py-2 font-medium">Zara Traders</td><td className="px-3 py-2">Buyer</td><td className="px-3 py-2">Fatima Zara, Proprietor</td></tr>
+          <tr><td className="px-3 py-2 font-medium">TechNova Pvt. Ltd.</td><td className="px-3 py-2">Supplier</td><td className="px-3 py-2">Rajesh Mehta, CEO</td></tr>
+          <tr><td className="px-3 py-2 font-medium">Zenith Traders</td><td className="px-3 py-2">Buyer</td><td className="px-3 py-2">Priya Sharma, Proprietor</td></tr>
         </tbody>
       </table>
     ),
@@ -46,7 +46,7 @@ const SUMMARY_SECTIONS = [
     title: 'Key Obligations',
     content: (
       <ul className="text-sm space-y-2 text-dark-text">
-        {['AlphaTech: Deliver goods within 14 business days of each purchase order', 'AlphaTech: Maintain product quality per ISO 9001 standards', 'Zara Traders: Make payment within 30 days of invoice', 'Zara Traders: Inspect and report defects within 7 days of delivery', 'Both parties: Maintain confidentiality of proprietary information'].map(o => (
+        {['TechNova Pvt. Ltd.: Deliver goods within 14 business days of each purchase order', 'TechNova Pvt. Ltd.: Maintain product quality per ISO 9001 standards', 'Zenith Traders: Make payment within 30 days of invoice', 'Zenith Traders: Inspect and report defects within 7 days of delivery', 'Both parties: Maintain confidentiality of proprietary information'].map(o => (
           <li key={o} className="flex gap-2 items-start"><span className="text-blue-brand mt-0.5">•</span>{o}</li>
         ))}
       </ul>
@@ -112,8 +112,8 @@ const SUMMARY_SECTIONS = [
 ];
 
 const PREFILLED_QA = [
-  { q: 'Who is responsible for delivery?', a: 'According to Clause 4.2, AlphaTech (Supplier) is responsible for delivery of all goods to Zara Traders\' warehouse. Risk transfers upon delivery and signed acceptance note.' },
-  { q: 'What is the penalty for late payment?', a: 'Clause 7.1 specifies a 2% monthly surcharge on all overdue amounts. Additionally, AlphaTech reserves the right to suspend future deliveries after 30 days of non-payment.' },
+  { q: 'Who is responsible for delivery?', a: 'According to Clause 4.2, TechNova Pvt. Ltd. (Supplier) is responsible for delivery of all goods to Zenith Traders\' warehouse. Risk transfers upon delivery and signed acceptance note.' },
+  { q: 'What is the penalty for late payment?', a: 'Clause 7.1 specifies a 2% monthly surcharge on all overdue amounts. Additionally, TechNova Pvt. Ltd. reserves the right to suspend future deliveries after 30 days of non-payment.' },
 ];
 
 const DocumentSummary: React.FC = () => {
@@ -202,7 +202,7 @@ const DocumentSummary: React.FC = () => {
                 <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto">
                   <span className="text-success text-xl">✓</span>
                 </div>
-                <p className="text-sm font-medium text-dark-text">Supplier Agreement – AlphaTech vs. Zara Traders.pdf</p>
+                <p className="text-sm font-medium text-dark-text">Supplier Agreement – TechNova Pvt. Ltd. vs. Zenith Traders.pdf</p>
                 <p className="text-xs text-muted-text">2.4 MB • PDF</p>
               </div>
             )}
@@ -228,7 +228,7 @@ const DocumentSummary: React.FC = () => {
           <div className="space-y-4">
             <div className="bg-navy rounded-2xl p-4 text-white">
               <h2 className="font-serif text-sm font-semibold opacity-70 mb-0.5">Analyzed Document</h2>
-              <p className="font-semibold">Supplier Agreement — AlphaTech vs. Zara Traders</p>
+              <p className="font-semibold">Supplier Agreement — TechNova Pvt. Ltd. vs. Zenith Traders</p>
               <p className="text-xs opacity-60 mt-1">AI confidence: 94% • 18 clauses detected</p>
             </div>
 

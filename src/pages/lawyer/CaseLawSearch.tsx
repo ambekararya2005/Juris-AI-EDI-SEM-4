@@ -51,7 +51,7 @@ const CaseLawSearch: React.FC = () => {
       {/* Search Hero */}
       <div className="bg-navy rounded-2xl p-8">
         <h1 className="font-serif text-2xl font-bold text-white mb-1">Case Law Search</h1>
-        <p className="text-white/60 text-sm mb-5">Search Pakistan's case law in natural language</p>
+        <p className="text-white/60 text-sm mb-5">Search Maharashtra's case law in natural language</p>
 
         <div className="flex gap-2 mb-4">
           <div className="flex-1 flex items-center gap-2 bg-white/10 backdrop-blur-sm rounded-xl px-4 py-3 border border-white/20">
@@ -60,7 +60,7 @@ const CaseLawSearch: React.FC = () => {
               value={query}
               onChange={e => setQuery(e.target.value)}
               onKeyDown={e => { if (e.key === 'Enter') setSearched(true); }}
-              placeholder='e.g. "bail denied where accused is repeat offender in Punjab"'
+              placeholder='e.g. "bail denied where accused is repeat offender in Maharashtra"'
               className="flex-1 bg-transparent text-white placeholder:text-white/40 text-sm outline-none"
             />
           </div>
@@ -166,9 +166,9 @@ const CaseLawSearch: React.FC = () => {
             </div>
 
             {[
-              { label: 'Background', text: 'This case arose from an application for pre-arrest bail under Section 498 of the Code of Criminal Procedure. The applicant was accused under Section 302 PPC at Police Station Gulberg, Lahore.' },
-              { label: 'Issue', text: 'Whether bail can be granted to a first-time offender charged under Section 302 PPC where investigation is substantially complete and the accused poses no flight risk.' },
-              { label: 'Decision', text: 'Bail granted subject to surety of PKR 500,000 with two sureties. The Court held that bail is the rule and jail is the exception, particularly for first-time offenders.' },
+              { label: 'Background', text: 'This case arose from an application for anticipatory bail under Section 438 of the Code of Criminal Procedure. The applicant was accused under Section 302 IPC at Police Station Shivajinagar, Pune.' },
+              { label: 'Issue', text: 'Whether bail can be granted to a first-time offender charged under Section 302 IPC where investigation is substantially complete and the accused poses no flight risk.' },
+              { label: 'Decision', text: 'Bail granted subject to surety of ₹5,00,000 with two sureties. The Court held that bail is the rule and jail is the exception, particularly for first-time offenders.' },
               { label: 'Ratio Decidendi', text: selectedCase.summary },
               { label: 'Obiter Dicta', text: 'Courts should not mechanically deny bail based on the gravity of charge alone. Personal liberty guaranteed under Article 9 must be the primary consideration.' },
             ].map(s => (
