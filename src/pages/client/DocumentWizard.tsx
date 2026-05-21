@@ -1,9 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Check, ChevronRight, Scale, FileText, Gavel, BookOpen, Briefcase, Home } from 'lucide-react';
+import { Check, ChevronRight, Scale, FileText, Gavel, BookOpen, Briefcase, Home, X, Download } from 'lucide-react';
 import Stepper from '../../components/ui/Stepper';
 import Button from '../../components/ui/Button';
-import { BAIL_APPLICATION_CONTENT } from '../../data/mockData';
+import { BAIL_APPLICATION_CONTENT, mockDistricts, mockIPCSections } from '../../data/mockData';
 
 const DOC_TYPES = [
   { id: 'Wakalatnama', icon: <Scale size={28} />, desc: 'Power of attorney for your legal representative', label: 'Wakalatnama' },
@@ -14,7 +14,6 @@ const DOC_TYPES = [
   { id: 'Rental Agreement', icon: <Home size={28} />, desc: 'Lease agreement for residential or commercial property', label: 'Rental Agreement' },
 ];
 
-const DISTRICTS = ['Pune', 'Mumbai', 'Nashik', 'Nagpur', 'Aurangabad', 'Kolhapur', 'Solapur', 'Thane'];
 const BAIL_GROUNDS = ['First-time offender', 'Medical condition', 'Sole breadwinner', 'Completed investigation', 'Insufficient evidence', 'Bailable offence'];
 
 interface FormData {
@@ -33,11 +32,15 @@ interface FormData {
   additionalFacts: string;
 }
 
+interface SelectedSection {
+  section: string;
+  title: string;
+}
+
 const DocumentWizard: React.FC = () => {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const [generating, setGenerating] = useState(false);
-  const [generated, setGenerated] = useState(false);
   const [form, setForm] = useState<FormData>({
     docType: '',
     fullName: '', cnic: '', firNumber: '', policeStation: '',
@@ -46,6 +49,41 @@ const DocumentWizard: React.FC = () => {
     suretyName: '', suretyCnic: '', suretyRelationship: 'Brother',
     additionalFacts: 'The accused has been falsely implicated and was not present at the alleged scene of the crime.',
   });
+
+  // IPC/BNS section search state
+  const [ipcQuery, setIpcQuery] = useState('');
+  const [ipcDropdownOpen, setIpcDropdownOpen] = useState(false);
+  const [selectedSections, setSelectedSections] = useState<SelectedSection[]>([]);
+  const ipcInputRef = useRef<HTMLInputElement>(null);
+
+  const filteredIPCSections = ipcQuery.trim()
+    ? mockIPCSections.filter(s =>
+        s.section.toLowerCase().includes(ipcQuery.toLowerCase()) ||
+        s.title.toLowerCase().includes(ipcQuery.toLowerCase())
+      ).slice(0, 5)
+    : [];
+
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (ipcInputRef.current && !ipcInputRef.current.closest('.ipc-dropdown-wrapper')?.contains(e.target as Node)) {
+        setIpcDropdownOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+
+  const addSection = (section: SelectedSection) => {
+    if (!selectedSections.find(s => s.section === section.section)) {
+      setSelectedSections(prev => [...prev, section]);
+    }
+    setIpcQuery('');
+    setIpcDropdownOpen(false);
+  };
+
+  const removeSection = (sectionCode: string) => {
+    setSelectedSections(prev => prev.filter(s => s.section !== sectionCode));
+  };
 
   const updateForm = (key: keyof FormData, value: any) =>
     setForm(prev => ({ ...prev, [key]: value }));
@@ -63,17 +101,19 @@ const DocumentWizard: React.FC = () => {
     setGenerating(true);
     await new Promise(r => setTimeout(r, 2500));
     setGenerating(false);
-    setGenerated(true);
   };
 
-  const labelCls = "block text-sm font-medium text-dark-text mb-1.5";
-  const inputCls = "w-full px-3 py-2.5 border border-border rounded-xl text-sm text-dark-text bg-white focus:outline-none focus:ring-2 focus:ring-blue-brand/30 focus:border-blue-brand transition-all";
+  const labelCls = "block text-sm font-medium text-dark-text dark:text-slate-200 mb-1.5";
+  const inputCls = "w-full px-3 py-2.5 border border-border dark:border-slate-600 rounded-xl text-sm text-dark-text dark:text-slate-100 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-brand/30 focus:border-blue-brand transition-all";
+
+  // Approximate word count of bail application content
+  const wordCount = BAIL_APPLICATION_CONTENT.split(/\s+/).filter(Boolean).length;
 
   return (
     <div className="max-w-2xl mx-auto">
       <div className="mb-6">
-        <h1 className="font-serif text-2xl font-bold text-dark-text">New Document</h1>
-        <p className="text-muted-text text-sm mt-1">AI-powered legal document drafting in minutes</p>
+        <h1 className="font-serif text-2xl font-bold text-dark-text dark:text-slate-100">New Document</h1>
+        <p className="text-muted-text dark:text-slate-400 text-sm mt-1">AI-powered legal document drafting in minutes</p>
       </div>
 
       <Stepper
@@ -84,7 +124,7 @@ const DocumentWizard: React.FC = () => {
       {/* Step 0: Choose Type */}
       {step === 0 && (
         <div className="space-y-4">
-          <h2 className="font-serif text-lg font-semibold text-dark-text">What document do you need?</h2>
+          <h2 className="font-serif text-lg font-semibold text-dark-text dark:text-slate-100">What document do you need?</h2>
           <div className="grid grid-cols-2 gap-3">
             {DOC_TYPES.map(dt => (
               <button
@@ -93,20 +133,20 @@ const DocumentWizard: React.FC = () => {
                 className={`relative flex flex-col gap-2 p-4 rounded-2xl border-2 text-left transition-all duration-200
                   hover:-translate-y-0.5 hover:shadow-card-hover
                   ${form.docType === dt.id
-                    ? 'border-navy bg-light-blue shadow-card'
-                    : 'border-border bg-white hover:border-blue-brand/40'}`}
+                    ? 'border-navy bg-light-blue dark:bg-slate-700 shadow-card'
+                    : 'border-border dark:border-slate-600 bg-white dark:bg-slate-800 hover:border-blue-brand/40'}`}
               >
                 {form.docType === dt.id && (
                   <div className="absolute top-2 right-2 w-5 h-5 rounded-full bg-gold flex items-center justify-center">
                     <Check size={12} className="text-white" />
                   </div>
                 )}
-                <div className={`${form.docType === dt.id ? 'text-navy' : 'text-muted-text'}`}>
+                <div className={`${form.docType === dt.id ? 'text-navy dark:text-blue-400' : 'text-muted-text dark:text-slate-400'}`}>
                   {dt.icon}
                 </div>
                 <div>
-                  <div className="font-semibold text-dark-text text-sm">{dt.label}</div>
-                  <div className="text-xs text-muted-text mt-0.5 leading-relaxed">{dt.desc}</div>
+                  <div className="font-semibold text-dark-text dark:text-slate-100 text-sm">{dt.label}</div>
+                  <div className="text-xs text-muted-text dark:text-slate-400 mt-0.5 leading-relaxed">{dt.desc}</div>
                 </div>
               </button>
             ))}
@@ -121,9 +161,9 @@ const DocumentWizard: React.FC = () => {
 
       {/* Step 1: Basic Info */}
       {step === 1 && (
-        <div className="bg-white rounded-2xl shadow-card border border-border/50 p-6 space-y-4">
-          <h2 className="font-serif text-lg font-semibold text-dark-text mb-2">Basic Information</h2>
-          <p className="text-xs text-muted-text bg-light-blue rounded-lg px-3 py-2 mb-4">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-card border border-border/50 dark:border-slate-700 p-6 space-y-4">
+          <h2 className="font-serif text-lg font-semibold text-dark-text dark:text-slate-100 mb-2">Basic Information</h2>
+          <p className="text-xs text-muted-text dark:text-slate-400 bg-light-blue dark:bg-slate-700 rounded-lg px-3 py-2 mb-4">
             Completing a <strong>{form.docType}</strong>. Fill in the details below.
           </p>
 
@@ -147,7 +187,9 @@ const DocumentWizard: React.FC = () => {
             <div>
               <label className={labelCls}>District</label>
               <select className={inputCls} value={form.district} onChange={e => updateForm('district', e.target.value)}>
-                {DISTRICTS.map(d => <option key={d}>{d}</option>)}
+                {mockDistricts.map(d => (
+                  <option key={d.district} value={d.district}>{d.district}</option>
+                ))}
               </select>
             </div>
             <div>
@@ -157,6 +199,58 @@ const DocumentWizard: React.FC = () => {
             <div className="col-span-2">
               <label className={labelCls}>Charge(s) Filed</label>
               <textarea rows={3} className={inputCls} value={form.charges} onChange={e => updateForm('charges', e.target.value)} placeholder="Section 302 IPC (Murder)" />
+            </div>
+
+            {/* IPC/BNS Sections field */}
+            <div className="col-span-2">
+              <label className={labelCls}>IPC/BNS Sections</label>
+              <div className="ipc-dropdown-wrapper relative">
+                <input
+                  ref={ipcInputRef}
+                  className={inputCls}
+                  value={ipcQuery}
+                  onChange={e => { setIpcQuery(e.target.value); setIpcDropdownOpen(true); }}
+                  onFocus={() => ipcQuery.trim() && setIpcDropdownOpen(true)}
+                  placeholder="Search section number or title (e.g. IPC 302, Murder)..."
+                  autoComplete="off"
+                />
+                {ipcDropdownOpen && filteredIPCSections.length > 0 && (
+                  <div className="absolute z-20 left-0 right-0 mt-1 bg-white dark:bg-slate-800 border border-border dark:border-slate-600 rounded-xl shadow-lg overflow-hidden">
+                    {filteredIPCSections.map(s => (
+                      <button
+                        key={s.section}
+                        type="button"
+                        onMouseDown={e => { e.preventDefault(); addSection({ section: s.section, title: s.title }); }}
+                        className="w-full text-left px-4 py-2.5 text-sm hover:bg-light-blue dark:hover:bg-slate-700 text-dark-text dark:text-slate-100 transition-colors border-b border-border/40 dark:border-slate-700 last:border-b-0"
+                      >
+                        <span className="font-semibold text-navy dark:text-blue-400">{s.section}</span>
+                        <span className="text-muted-text dark:text-slate-400"> — {s.title}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              {/* Selected section chips */}
+              {selectedSections.length > 0 && (
+                <div className="flex flex-wrap gap-2 mt-2">
+                  {selectedSections.map(s => (
+                    <span
+                      key={s.section}
+                      className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-navy/10 dark:bg-blue-900/40 text-navy dark:text-blue-300 text-xs font-medium"
+                    >
+                      {s.section}
+                      <button
+                        type="button"
+                        onClick={() => removeSection(s.section)}
+                        className="hover:text-risk transition-colors"
+                        aria-label={`Remove ${s.section}`}
+                      >
+                        <X size={12} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
 
@@ -169,8 +263,8 @@ const DocumentWizard: React.FC = () => {
 
       {/* Step 2: Details */}
       {step === 2 && (
-        <div className="bg-white rounded-2xl shadow-card border border-border/50 p-6 space-y-5">
-          <h2 className="font-serif text-lg font-semibold text-dark-text">Bail Application Details</h2>
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-card border border-border/50 dark:border-slate-700 p-6 space-y-5">
+          <h2 className="font-serif text-lg font-semibold text-dark-text dark:text-slate-100">Bail Application Details</h2>
 
           <div>
             <label className={labelCls}>Grounds for Bail</label>
@@ -183,7 +277,7 @@ const DocumentWizard: React.FC = () => {
                     onChange={() => toggleGround(g)}
                     className="w-4 h-4 accent-navy rounded"
                   />
-                  <span className="text-sm text-dark-text group-hover:text-navy transition-colors">{g}</span>
+                  <span className="text-sm text-dark-text dark:text-slate-200 group-hover:text-navy dark:group-hover:text-blue-400 transition-colors">{g}</span>
                 </label>
               ))}
             </div>
@@ -219,51 +313,117 @@ const DocumentWizard: React.FC = () => {
 
       {/* Step 3: Review & Generate */}
       {step === 3 && (
-        <div className="bg-white rounded-2xl shadow-card border border-border/50 p-6">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-card border border-border/50 dark:border-slate-700 p-6">
           {generating ? (
-            <div className="flex flex-col items-center justify-center py-16 gap-6">
+            /* Generation animation */
+            <div className="flex flex-col items-center justify-center py-20 gap-6">
               <div className="relative">
-                <div className="w-20 h-20 rounded-full bg-light-blue flex items-center justify-center">
-                  <Scale size={32} className="text-navy animate-pulse" />
+                <div className="w-24 h-24 rounded-full bg-light-blue dark:bg-slate-700 flex items-center justify-center">
+                  <Scale size={36} className="text-navy dark:text-blue-400 animate-pulse" />
                 </div>
                 <div className="absolute inset-0 rounded-full border-4 border-t-gold border-r-transparent border-b-transparent border-l-transparent animate-spin" />
               </div>
-              <div className="text-center">
-                <p className="font-semibold text-dark-text text-lg">JurisAI is drafting your document...</p>
-                <p className="text-sm text-muted-text mt-1">Applying legal templates and Maharashtra court formatting</p>
+              <div className="text-center space-y-1">
+                <p className="font-semibold text-dark-text dark:text-slate-100 text-lg">Generating your bail application...</p>
+                <p className="text-sm text-muted-text dark:text-slate-400">Applying legal templates and Maharashtra court formatting</p>
               </div>
-              <div className="w-64 h-1.5 bg-light-blue rounded-full overflow-hidden">
-                <div className="h-full bg-gold rounded-full animate-progress-fill" style={{ width: '60%', transition: 'width 2.5s ease-out' }} />
+              <div className="w-72 h-1.5 bg-light-blue dark:bg-slate-700 rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-gold rounded-full"
+                  style={{ width: '70%', transition: 'width 2.5s ease-out' }}
+                />
               </div>
             </div>
           ) : (
+            /* 2-column preview + summary */
             <div>
-              <div className="flex flex-col items-center py-6 mb-6">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mb-3">
-                  <Check size={28} className="text-success" />
+              {/* Success header */}
+              <div className="flex flex-col items-center py-5 mb-6">
+                <div className="w-14 h-14 bg-green-100 dark:bg-green-900/40 rounded-full flex items-center justify-center mb-3">
+                  <Check size={24} className="text-success" />
                 </div>
-                <h2 className="font-serif text-xl font-bold text-dark-text">Your {form.docType} has been drafted!</h2>
-                <p className="text-sm text-muted-text mt-1">Review below and take action</p>
+                <h2 className="font-serif text-xl font-bold text-dark-text dark:text-slate-100">Your {form.docType} has been drafted!</h2>
+                <p className="text-sm text-muted-text dark:text-slate-400 mt-1">Review below and take action</p>
               </div>
 
-              {/* Legal Document Preview */}
-              <div className="bg-surface-gray rounded-xl p-6 font-mono text-xs leading-relaxed text-dark-text mb-6 max-h-96 overflow-y-auto border border-border">
-                <div className="text-center mb-4">
-                  <div className="text-base font-bold text-navy font-sans">सत्र न्यायालय, पुणे</div>
-                  <div className="text-sm font-bold tracking-wider mt-1">IN THE COURT OF SESSIONS JUDGE PUNE</div>
-                  <div className="mt-2 text-xs uppercase tracking-widest text-muted-text">
-                    APPLICATION FOR BAIL BEFORE ARREST
+              {/* 2-column layout */}
+              <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 mb-6">
+                {/* Left: Document preview */}
+                <div className="lg:col-span-3 bg-surface-gray dark:bg-slate-900 rounded-xl p-5 font-mono text-xs leading-relaxed text-dark-text dark:text-slate-200 max-h-96 overflow-y-auto border border-border dark:border-slate-700">
+                  <div className="text-center mb-4">
+                    <div className="text-base font-bold text-navy dark:text-blue-400 font-sans">सत्र न्यायालय, पुणे</div>
+                    <div className="text-sm font-bold tracking-wider mt-1">IN THE COURT OF SESSIONS JUDGE PUNE</div>
+                    <div className="mt-2 text-xs uppercase tracking-widest text-muted-text dark:text-slate-400">
+                      APPLICATION FOR BAIL BEFORE ARREST
+                    </div>
+                    <div className="mt-1 text-xs text-muted-text dark:text-slate-400">
+                      Case No.: FIR {form.firNumber || '112/2026'} | Police Station: {form.policeStation || 'Shivajinagar'}
+                    </div>
                   </div>
-                  <div className="mt-1 text-xs text-muted-text">
-                    Case No.: FIR {form.firNumber || '112/2026'} | Police Station: {form.policeStation || 'Shivajinagar'}
+                  <pre className="whitespace-pre-wrap font-mono text-xs">{BAIL_APPLICATION_CONTENT}</pre>
+                </div>
+
+                {/* Right: Summary panel */}
+                <div className="lg:col-span-2 space-y-4">
+                  <div className="bg-navy dark:bg-slate-900 rounded-xl p-4 text-white">
+                    <p className="text-xs text-white/60 uppercase tracking-widest font-semibold mb-3">Document Summary</p>
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-xs text-white/50">Document Type</p>
+                        <p className="text-sm font-semibold">{form.docType || 'Bail Application'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-white/50">Client Name</p>
+                        <p className="text-sm font-semibold">{form.fullName || 'Ravi Ramesh Patil'}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-white/50">District</p>
+                        <p className="text-sm font-semibold">{form.district}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-white/50">Word Count</p>
+                        <p className="text-sm font-semibold">{wordCount} words</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* IPC Sections */}
+                  <div className="bg-light-blue dark:bg-slate-700/50 rounded-xl p-4">
+                    <p className="text-xs text-muted-text dark:text-slate-400 uppercase tracking-widest font-semibold mb-2">IPC/BNS Sections</p>
+                    {selectedSections.length > 0 ? (
+                      <div className="flex flex-wrap gap-1.5">
+                        {selectedSections.map(s => (
+                          <span
+                            key={s.section}
+                            className="inline-block px-2 py-0.5 rounded-full bg-navy/10 dark:bg-blue-900/50 text-navy dark:text-blue-300 text-xs font-medium"
+                          >
+                            {s.section}
+                          </span>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-xs text-muted-text dark:text-slate-500 italic">No sections added</p>
+                    )}
+                  </div>
+
+                  {/* Bail Grounds */}
+                  <div className="bg-surface-gray dark:bg-slate-700/30 rounded-xl p-4">
+                    <p className="text-xs text-muted-text dark:text-slate-400 uppercase tracking-widest font-semibold mb-2">Bail Grounds</p>
+                    <div className="flex flex-wrap gap-1.5">
+                      {form.grounds.map(g => (
+                        <span key={g} className="inline-block px-2 py-0.5 rounded-full bg-green-100 dark:bg-green-900/40 text-green-700 dark:text-green-300 text-xs font-medium">
+                          {g}
+                        </span>
+                      ))}
+                    </div>
                   </div>
                 </div>
-                <pre className="whitespace-pre-wrap font-mono text-xs">{BAIL_APPLICATION_CONTENT}</pre>
               </div>
 
+              {/* Action buttons */}
               <div className="flex flex-wrap gap-3">
                 <Button variant="outline" size="sm" onClick={() => {}}>
-                  📄 Download PDF
+                  <Download size={14} /> Download PDF
                 </Button>
                 <Button variant="primary" size="sm" onClick={() => navigate('/client/documents')}>
                   Request Lawyer Review →

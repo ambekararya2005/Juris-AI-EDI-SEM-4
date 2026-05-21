@@ -18,11 +18,13 @@ export interface User {
 
 export type DocumentType =
   | 'Wakalatnama'
+  | 'Vakalatnama'
   | 'Petition'
   | 'Affidavit'
   | 'Bail Application'
   | 'Business Agreement'
-  | 'Rental Agreement';
+  | 'Rental Agreement'
+  | 'Leave & Licence Agreement';
 
 export type DocumentStatus =
   | 'Draft'
@@ -105,4 +107,73 @@ export interface ToastMessage {
   id: string;
   message: string;
   type: 'success' | 'error' | 'warning' | 'info';
+}
+
+// ─── NEW TYPES ──────────────────────────────────────────────
+
+export interface Client {
+  id: string;
+  name: string;
+  initials: string;
+  email: string;
+  phone: string;
+  caseCount: number;
+  joinDate: string;
+  assignedLawyer: string;
+}
+
+export type CaseStage =
+  | 'Filed'
+  | 'Under Review'
+  | 'Hearing Scheduled'
+  | 'Judgment Pending'
+  | 'Resolved';
+
+export interface ActiveCase {
+  id: string;
+  caseNumber: string;
+  title: string;
+  court: string;
+  filingDate: string;
+  nextHearing: string;
+  stage: CaseStage;
+  judge: string;
+  ipcSections: string[];
+}
+
+export interface Hearing {
+  id: string;
+  caseId: string;
+  date: string;
+  time: string;
+  court: string;
+  judge: string;
+  caseTitle: string;
+}
+
+export interface IPCSection {
+  section: string;
+  title: string;
+  description: string;
+  punishment: string;
+  bnsEquivalent?: string;
+}
+
+export interface MaharashtraDistrict {
+  district: string;
+  court: string;
+  address: string;
+  judges: number;
+}
+
+export interface LawyerProfile {
+  name: string;
+  barNumber: string;
+  initials: string;
+  rating: number;
+  specialization: string[];
+  casesWon: number;
+  casesTotal: number;
+  joinDate: string;
+  earnings: { month: string; amount: number }[];
 }

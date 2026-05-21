@@ -6,6 +6,12 @@ import {
   ReviewQueueItem,
   User,
   ActivityData,
+  Client,
+  ActiveCase,
+  Hearing,
+  IPCSection,
+  MaharashtraDistrict,
+  LawyerProfile
 } from '../types';
 
 // ===================== USERS =====================
@@ -893,3 +899,124 @@ export const mockRecentSearches = [
   { query: 'RERA possession delay compensation', time: '3d ago' },
   { query: 'IPC 420 cheating financial fraud bail', time: '5d ago' },
 ];
+
+// ===================== CLIENTS =====================
+
+export const mockClients: Client[] = [
+  { id: 'cl1', name: 'Priya Suresh Deshmukh',  initials: 'PD', email: 'priya.deshmukh@gmail.com',       phone: '+91-98765-43210', caseCount: 4, joinDate: '2026-01-15', assignedLawyer: 'Adv. Rahul Vijay Joshi' },
+  { id: 'cl2', name: 'Rohit Prakash Jadhav',   initials: 'RJ', email: 'rohit.jadhav@gmail.com',         phone: '+91-99001-55678', caseCount: 2, joinDate: '2026-02-03', assignedLawyer: 'Adv. Meera Santosh Kulkarni' },
+  { id: 'cl3', name: 'Vikram Dilip Pawar',      initials: 'VP', email: 'vikram.pawar@nagpur.in',         phone: '+91-97654-32101', caseCount: 3, joinDate: '2026-01-28', assignedLawyer: 'Adv. Rahul Vijay Joshi' },
+  { id: 'cl4', name: 'Arjun Santosh Rane',      initials: 'AR', email: 'arjun.rane@mumbai.com',          phone: '+91-98234-11223', caseCount: 1, joinDate: '2026-02-20', assignedLawyer: 'Adv. Meera Santosh Kulkarni' },
+  { id: 'cl5', name: 'Sunita Kiran Bhosale',    initials: 'SB', email: 'sunita.bhosale@nashik.in',       phone: '+91-96754-88901', caseCount: 2, joinDate: '2025-12-10', assignedLawyer: 'Adv. Rahul Vijay Joshi' },
+  { id: 'cl6', name: 'Nilesh Ganesh Bhosale',   initials: 'NB', email: 'nilesh.bhosale@pune.com',        phone: '+91-99234-56789', caseCount: 1, joinDate: '2026-03-01', assignedLawyer: 'Adv. Rahul Vijay Joshi' },
+  { id: 'cl7', name: 'Kavita Ramesh Shinde',    initials: 'KS', email: 'kavita.shinde@gmail.com',        phone: '+91-97001-22334', caseCount: 2, joinDate: '2025-11-20', assignedLawyer: 'Adv. Meera Santosh Kulkarni' },
+  { id: 'cl8', name: 'Deepak Mohan Kulkarni',   initials: 'DK', email: 'deepak.kulkarni@kolhapur.in',    phone: '+91-98567-44321', caseCount: 1, joinDate: '2026-02-14', assignedLawyer: 'Adv. Rahul Vijay Joshi' },
+];
+
+// ===================== ACTIVE CASES =====================
+export const mockActiveCases: ActiveCase[] = [
+  {
+    id: 'ac1', caseNumber: 'CMA 187/2026',
+    title: 'State of Maharashtra v. Ravi Ramesh Patil',
+    court: 'Sessions Court, Pune', filingDate: '2026-03-10',
+    nextHearing: '2026-04-15', stage: 'Hearing Scheduled',
+    judge: 'Hon. S. D. Kulkarni, Addl. Sessions Judge',
+    ipcSections: ['IPC 420', 'IPC 406', 'BNS 318', 'BNS 316'],
+  },
+  {
+    id: 'ac2', caseNumber: 'CS 112/2026',
+    title: 'Priya Deshmukh v. Sharma Builders & Developers',
+    court: 'District Court, Pune', filingDate: '2026-02-28',
+    nextHearing: '2026-04-22', stage: 'Under Review',
+    judge: 'Hon. R. P. Deshpande, District Judge',
+    ipcSections: ['Specific Relief Act S.10', 'Transfer of Property Act S.54'],
+  },
+  {
+    id: 'ac3', caseNumber: 'WP 334/2026',
+    title: 'Priya Deshmukh v. Pune Municipal Corporation',
+    court: 'Bombay High Court', filingDate: '2026-02-15',
+    nextHearing: '2026-05-02', stage: 'Judgment Pending',
+    judge: 'Hon. Justice A. S. Chandurkar',
+    ipcSections: ['Article 226', 'Maharashtra Municipal Corporations Act S.260'],
+  },
+  {
+    id: 'ac4', caseNumber: 'CMA 52/2026',
+    title: 'State of Maharashtra v. Arjun Santosh Rane',
+    court: 'Sessions Court, Mumbai', filingDate: '2026-03-01',
+    nextHearing: '2026-04-18', stage: 'Hearing Scheduled',
+    judge: 'Hon. P. R. Sawant, Sessions Judge',
+    ipcSections: ['IPC 379', 'BNS 303'],
+  },
+  {
+    id: 'ac5', caseNumber: 'CS 78/2025',
+    title: 'Sunita Bhosale v. Nashik Cooperative Bank',
+    court: 'District Court, Nashik', filingDate: '2025-11-05',
+    nextHearing: '2026-04-30', stage: 'Under Review',
+    judge: 'Hon. M. K. Patil, District Judge',
+    ipcSections: ['Banking Regulation Act S.45', 'Consumer Protection Act S.35'],
+  },
+  {
+    id: 'ac6', caseNumber: 'CS 204/2024',
+    title: 'Deepak Kulkarni v. Kolhapur Development Authority',
+    court: 'District Court, Kolhapur', filingDate: '2024-09-12',
+    nextHearing: '2026-05-08', stage: 'Resolved',
+    judge: 'Hon. V. S. More, District Judge',
+    ipcSections: ['Land Acquisition Act S.25', 'Maharashtra Regional Town Planning Act S.88'],
+  },
+];
+
+// ===================== HEARINGS =====================
+export const mockHearings: Hearing[] = [
+  { id: 'h1', caseId: 'ac1', date: '2026-04-15', time: '10:30 AM', court: 'Sessions Court, Pune',       judge: 'Hon. S. D. Kulkarni', caseTitle: 'State v. Ravi Ramesh Patil' },
+  { id: 'h2', caseId: 'ac2', date: '2026-04-22', time: '02:00 PM', court: 'District Court, Pune',        judge: 'Hon. R. P. Deshpande', caseTitle: 'Priya Deshmukh v. Sharma Builders' },
+  { id: 'h3', caseId: 'ac3', date: '2026-05-02', time: '11:00 AM', court: 'Bombay High Court',           judge: 'Hon. Justice A. S. Chandurkar', caseTitle: 'Deshmukh v. Pune Municipal Corporation' },
+  { id: 'h4', caseId: 'ac4', date: '2026-04-18', time: '03:30 PM', court: 'Sessions Court, Mumbai',      judge: 'Hon. P. R. Sawant', caseTitle: 'State v. Arjun Santosh Rane' },
+  { id: 'h5', caseId: 'ac5', date: '2026-04-30', time: '10:00 AM', court: 'District Court, Nashik',      judge: 'Hon. M. K. Patil', caseTitle: 'Sunita Bhosale v. Nashik Cooperative Bank' },
+];
+
+// ===================== IPC / BNS SECTIONS =====================
+export const mockIPCSections: IPCSection[] = [
+  { section: 'IPC 302', bnsEquivalent: 'BNS 101', title: 'Murder', description: 'Whoever commits murder shall be punished with death or imprisonment for life.', punishment: 'Death or Imprisonment for Life + Fine' },
+  { section: 'IPC 307', bnsEquivalent: 'BNS 109', title: 'Attempt to Murder', description: 'Whoever does any act with intention or knowledge to cause death of another person.', punishment: 'Imprisonment up to 10 years + Fine; if hurt caused: Life Imprisonment' },
+  { section: 'IPC 376', bnsEquivalent: 'BNS 64',  title: 'Rape', description: 'Whoever commits rape as defined under Section 375 IPC.', punishment: 'Rigorous Imprisonment not less than 10 years, may extend to Life + Fine' },
+  { section: 'IPC 420', bnsEquivalent: 'BNS 318', title: 'Cheating & Dishonest Inducement', description: 'Cheating and thereby dishonestly inducing delivery of property or alteration of documents.', punishment: 'Imprisonment up to 7 years + Fine' },
+  { section: 'IPC 406', bnsEquivalent: 'BNS 316', title: 'Criminal Breach of Trust', description: 'Punishment for criminal breach of trust as defined under Section 405 IPC.', punishment: 'Imprisonment up to 3 years, or Fine, or Both' },
+  { section: 'IPC 354', bnsEquivalent: 'BNS 74',  title: 'Assault / Criminal Force to Woman', description: 'Assault or criminal force to woman with intent to outrage her modesty.', punishment: 'Imprisonment 1–5 years + Fine (mandatory)' },
+  { section: 'IPC 379', bnsEquivalent: 'BNS 303', title: 'Theft', description: 'Punishment for theft as defined under Section 378 IPC.', punishment: 'Imprisonment up to 3 years, or Fine, or Both' },
+  { section: 'IPC 498A', bnsEquivalent: 'BNS 84', title: 'Husband/Relative Cruelty to Woman', description: 'Cruelty by husband or his relatives towards a woman.', punishment: 'Imprisonment up to 3 years + Fine' },
+  { section: 'IPC 304B', bnsEquivalent: 'BNS 80', title: 'Dowry Death', description: 'Death caused by burns, bodily injury within 7 years of marriage connected to dowry demand.', punishment: 'Imprisonment not less than 7 years, may extend to Life' },
+  { section: 'IPC 120B', bnsEquivalent: 'BNS 61', title: 'Criminal Conspiracy', description: 'Punishment for being party to a criminal conspiracy.', punishment: 'Same punishment as the offence conspired; or Imprisonment up to 6 months + Fine' },
+  { section: 'IPC 341', bnsEquivalent: 'BNS 126', title: 'Wrongful Restraint', description: 'Voluntarily obstructing a person to prevent them from proceeding in any direction they have a right to go.', punishment: 'Simple Imprisonment up to 1 month, or Fine up to ₹500, or Both' },
+  { section: 'IPC 323', bnsEquivalent: 'BNS 115', title: 'Voluntarily Causing Hurt', description: 'Punishment for voluntarily causing hurt as defined under Section 319 IPC.', punishment: 'Imprisonment up to 1 year, or Fine up to ₹1,000, or Both' },
+];
+
+// ===================== MAHARASHTRA DISTRICTS =====================
+export const mockDistricts: MaharashtraDistrict[] = [
+  { district: 'Pune',      court: 'District & Sessions Court, Pune',      address: 'Shivajinagar, Pune – 411 005',       judges: 42 },
+  { district: 'Mumbai',    court: 'City Civil & Sessions Court, Mumbai',   address: 'Kala Ghoda, Fort, Mumbai – 400 001',  judges: 85 },
+  { district: 'Nashik',    court: 'District & Sessions Court, Nashik',     address: 'Nashik Road, Nashik – 422 101',       judges: 28 },
+  { district: 'Nagpur',    court: 'District & Sessions Court, Nagpur',     address: 'Civil Lines, Nagpur – 440 001',       judges: 35 },
+  { district: 'Aurangabad',court: 'District & Sessions Court, Aurangabad', address: 'Osmanpura, Aurangabad – 431 005',     judges: 22 },
+  { district: 'Kolhapur',  court: 'District & Sessions Court, Kolhapur',   address: 'Shahupuri, Kolhapur – 416 001',       judges: 18 },
+];
+
+// ===================== LAWYER PROFILE =====================
+export const mockLawyerProfile: LawyerProfile = {
+  name: 'Adv. Rahul Vijay Joshi',
+  barNumber: 'MH/4521/2017',
+  initials: 'RJ',
+  rating: 4.8,
+  specialization: ['Criminal Law', 'Property Law', 'Civil Litigation'],
+  casesWon: 87,
+  casesTotal: 102,
+  joinDate: '2017-08-15',
+  earnings: [
+    { month: 'Oct', amount: 48000 },
+    { month: 'Nov', amount: 55000 },
+    { month: 'Dec', amount: 42000 },
+    { month: 'Jan', amount: 63000 },
+    { month: 'Feb', amount: 71000 },
+    { month: 'Mar', amount: 58000 },
+  ],
+};
+

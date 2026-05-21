@@ -6,9 +6,7 @@ interface RiskGaugeProps {
 
 const RiskGauge: React.FC<RiskGaugeProps> = ({ score }) => {
   // SVG arc gauge
-  const radius = 80;
   const strokeWidth = 14;
-  const circumference = Math.PI * radius; // half circle
 
   const getColor = () => {
     if (score >= 70) return '#C0392B';

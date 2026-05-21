@@ -1,55 +1,80 @@
 import React from 'react';
 
-type BadgeVariant = 'default' | 'success' | 'warning' | 'error' | 'info' | 'gray' | 'navy';
+// ─── Status Badge ─────────────────────────────────────────────────────────────
+
+type StatusVariant =
+  | 'draft' | 'pending' | 'approved' | 'rejected' | 'active'
+  | 'info' | 'success' | 'warning' | 'error';
+
+const statusStyles: Record<StatusVariant, string> = {
+  draft:    'bg-gray-100   text-gray-600   dark:bg-gray-700   dark:text-gray-300',
+  pending:  'bg-amber-100  text-amber-700  dark:bg-amber-900/40 dark:text-amber-300',
+  approved: 'bg-green-100  text-green-700  dark:bg-green-900/40 dark:text-green-300',
+  rejected: 'bg-red-100    text-red-700    dark:bg-red-900/40  dark:text-red-300',
+  active:   'bg-blue-100   text-blue-700   dark:bg-blue-900/40 dark:text-blue-300',
+  info:     'bg-light-blue text-blue-brand dark:bg-blue-900/40 dark:text-blue-300',
+  success:  'bg-green-50   text-success    dark:bg-green-900/40 dark:text-green-300',
+  warning:  'bg-amber-50   text-amber-700  dark:bg-amber-900/40 dark:text-amber-300',
+  error:    'bg-red-50     text-risk       dark:bg-red-900/40  dark:text-red-300',
+};
 
 interface BadgeProps {
+  variant?: StatusVariant;
   children: React.ReactNode;
-  variant?: BadgeVariant;
   pulse?: boolean;
   className?: string;
 }
 
-const variantClasses: Record<BadgeVariant, string> = {
-  default: 'bg-blue-100 text-blue-800',
-  success: 'bg-green-100 text-green-800',
-  warning: 'bg-amber-100 text-amber-800',
-  error: 'bg-red-100 text-red-800',
-  info: 'bg-blue-50 text-blue-700',
-  gray: 'bg-gray-100 text-gray-600',
-  navy: 'bg-navy text-white',
-};
+const Badge: React.FC<BadgeProps> = ({
+  variant = 'info',
+  children,
+  pulse = false,
+  className = '',
+}) => (
+  <span
+    className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-semibold
+      ${statusStyles[variant]} ${pulse ? 'badge-pulse' : ''} ${className}`}
+  >
+    {children}
+  </span>
+);
 
-const Badge: React.FC<BadgeProps> = ({ children, variant = 'default', pulse = false, className = '' }) => {
-  return (
-    <span
-      className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-xs font-medium
-        ${variantClasses[variant]} ${pulse ? 'badge-pulse' : ''} ${className}`}
-    >
-      {pulse && (
-        <span className="w-1.5 h-1.5 rounded-full bg-current animate-pulse" />
-      )}
-      {children}
-    </span>
-  );
-};
+// ─── Document status helpers ──────────────────────────────────────────────────
 
 export const getStatusBadge = (status: string) => {
-  switch (status) {
-    case 'Finalized': return <Badge variant="success">{status}</Badge>;
-    case 'Under Review': return <Badge variant="info" pulse>{status}</Badge>;
-    case 'Revision Needed': return <Badge variant="warning">{status}</Badge>;
-    case 'Draft': return <Badge variant="gray">{status}</Badge>;
-    default: return <Badge>{status}</Badge>;
-  }
+  const map: Record<string, { variant: StatusVariant; label: string }> = {
+    'Draft':          { variant: 'draft',    label: 'Draft' },
+    'Under Review':   { variant: 'pending',  label: 'Under Review' },
+    'Finalized':      { variant: 'approved', label: 'Finalized' },
+    'Revision Needed':{ variant: 'rejected', label: 'Revision Needed' },
+  };
+  const cfg = map[status] ?? { variant: 'info', label: status };
+  return <Badge variant={cfg.variant}>{cfg.label}</Badge>;
 };
 
+// ─── Priority badge ───────────────────────────────────────────────────────────
+
 export const getPriorityBadge = (priority: string) => {
-  switch (priority) {
-    case 'HIGH': return <Badge variant="error" pulse>High Priority</Badge>;
-    case 'MEDIUM': return <Badge variant="warning">Medium</Badge>;
-    case 'LOW': return <Badge variant="success">Low</Badge>;
-    default: return <Badge>{priority}</Badge>;
-  }
+  const map: Record<string, { variant: StatusVariant; label: string }> = {
+    HIGH:   { variant: 'rejected', label: '🔴 High' },
+    MEDIUM: { variant: 'pending',  label: '🟡 Medium' },
+    LOW:    { variant: 'approved', label: '🟢 Low' },
+  };
+  const cfg = map[priority] ?? { variant: 'info', label: priority };
+  return <Badge variant={cfg.variant}>{cfg.label}</Badge>;
+};
+
+// ─── Case stage badge ─────────────────────────────────────────────────────────
+
+export const getStageBadge = (stage: string) => {
+  const map: Record<string, StatusVariant> = {
+    'Filed':              'draft',
+    'Under Review':       'pending',
+    'Hearing Scheduled':  'active',
+    'Judgment Pending':   'warning',
+    'Resolved':           'approved',
+  };
+  return <Badge variant={map[stage] ?? 'info'}>{stage}</Badge>;
 };
 
 export default Badge;
