@@ -7,6 +7,7 @@ import { BAIL_APPLICATION_CONTENT, mockDistricts, mockIPCSections } from '../../
 import { useAuth } from '../../context/AuthContext';
 import { useApp } from '../../context/AppContext';
 import { supabase } from '../../lib/supabase';
+import { downloadPdf } from '../../utils/downloadPdf';
 
 const DOC_TYPES = [
   { id: 'Wakalatnama', icon: <Scale size={28} />, desc: 'Power of attorney for your legal representative', label: 'Wakalatnama' },
@@ -127,6 +128,20 @@ const DocumentWizard: React.FC = () => {
 
     setGenerating(false);
   };
+
+  const handleDownloadPDF = () => {
+    downloadPdf(
+      BAIL_APPLICATION_CONTENT,
+      `${form.docType || 'Document'}_${form.fullName || 'Draft'}`,
+      {
+        title: `${form.docType || 'Document'} - ${form.fullName || 'Draft'}`,
+        type: form.docType,
+        clientName: form.fullName || 'Draft',
+        date: new Date().toLocaleDateString('en-IN')
+      }
+    );
+  };
+
 
   const labelCls = "block text-sm font-medium text-dark-text dark:text-slate-200 mb-1.5";
   const inputCls = "w-full px-3 py-2.5 border border-border dark:border-slate-600 rounded-xl text-sm text-dark-text dark:text-slate-100 bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-brand/30 focus:border-blue-brand transition-all";
@@ -447,7 +462,7 @@ const DocumentWizard: React.FC = () => {
 
               {/* Action buttons */}
               <div className="flex flex-wrap gap-3">
-                <Button variant="outline" size="sm" onClick={() => {}}>
+                <Button variant="outline" size="sm" onClick={handleDownloadPDF}>
                   <Download size={14} /> Download PDF
                 </Button>
                 <Button variant="primary" size="sm" onClick={() => navigate('/client/documents')}>

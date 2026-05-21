@@ -12,7 +12,6 @@ import Button from '../../components/ui/Button';
 import Skeleton from '../../components/ui/Skeleton';
 import { mockActivityData } from '../../data/mockData';
 import {
-  IS_MOCK_MODE,
   getMockClientDocuments,
   getMockClientNotifications,
   getMockActiveCase,
@@ -20,7 +19,6 @@ import {
 } from '../../data/mockService';
 import { useApp } from '../../context/AppContext';
 import { OnboardingModal } from '../../components/OnboardingModal';
-import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
 
 const statusDbToUI: Record<string, string> = {
@@ -320,8 +318,8 @@ const DocStatusSummary: React.FC<{ stats: any; loading: boolean }> = ({ stats, l
   );
 };
 
-// ─── Live Data Fetching Hook ──────────────────────────────────────────────────
-const useClientDashboardData = (userId: string) => {
+// ─── Dashboard Data Hook (always uses mock data for demo) ─────────────────────
+const useClientDashboardData = (_userId: string) => {
   const [documents, setDocuments] = useState<any[]>([]);
   const [notifications, setNotifications] = useState<any[]>([]);
   const [activeCase, setActiveCase] = useState<any>(null);
@@ -331,135 +329,20 @@ const useClientDashboardData = (userId: string) => {
   useEffect(() => {
     const fetchAll = async () => {
       setLoading(true);
-
-      // ── MOCK MODE ────────────────────────────────────────────────────────────
-      if (IS_MOCK_MODE) {
-        const [docs, notifs, aCase, h] = await Promise.all([
-          getMockClientDocuments(),
-          getMockClientNotifications(),
-          getMockActiveCase(),
-          getMockClientHearings(),
-        ]);
-        setDocuments(docs);
-        setNotifications(notifs);
-        setActiveCase(aCase);
-        setHearings(h);
-        setLoading(false);
-        return;
-      }
-      // ── END MOCK MODE ────────────────────────────────────────────────────────
-
-      const [docsRes, notifsRes, caseRes] = await Promise.all([
-        supabase
-          .from('documents')
-          .select('*')
-          .eq('client_id', userId)
-          .order('created_at', { ascending: false })
-          .limit(10),
-
-        supabase
-          .from('notifications')
-          .select('*')
-          .eq('user_id', userId)
-          .order('created_at', { ascending: false })
-          .limit(6),
-
-        supabase
-          .from('cases')
-          .select('*')
-          .eq('client_id', userId)
-          .order('created_at', { ascending: false })
-          .limit(1),
+      const [docs, notifs, aCase, h] = await Promise.all([
+        getMockClientDocuments(),
+        getMockClientNotifications(),
+        getMockActiveCase(),
+        getMockClientHearings(),
       ]);
-
-      // Map documents
-      const docs = (docsRes.data ?? []).map((doc: any) => ({
-        id: doc.id,
-        title: doc.title,
-        type: doc.type,
-        status: statusDbToUI[doc.status] || doc.status,
-        createdAt: doc.created_at ? new Date(doc.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '',
-        lawyerName: doc.lawyer_name || '',
-      }));
       setDocuments(docs);
-
-      // Map notifications
-      const notifs = (notifsRes.data ?? []).map((n: any) => ({
-        id: n.id,
-        text: n.text || n.message || '',
-        type: n.type || 'info',
-        timestamp: n.created_at ? new Date(n.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '',
-        read: n.read ?? false,
-        icon: notifIcons[n.type] || 'ℹ️',
-      }));
       setNotifications(notifs);
-
-      // Map active case
-      const firstCase = caseRes.data && caseRes.data.length > 0 ? caseRes.data[0] : null;
-      const mappedCase = firstCase ? {
-        id: firstCase.id,
-        caseNumber: firstCase.case_number || 'N/A',
-        court: firstCase.court_name || firstCase.court || 'Court Room',
-        nextHearing: firstCase.next_hearing ? new Date(firstCase.next_hearing).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'None',
-        stage: firstCase.stage || 'Filed',
-      } : null;
-      setActiveCase(mappedCase);
-
-      // Fetch hearings if active case exists
-      if (firstCase) {
-        const { data: hearingData } = await supabase
-          .from('hearings')
-          .select('*')
-          .eq('case_id', firstCase.id)
-          .gte('date', new Date().toISOString().split('T')[0])
-          .order('date', { ascending: true })
-          .limit(3);
-
-        const mappedHearings = (hearingData ?? []).map((h: any) => ({
-          id: h.id,
-          date: h.date,
-          caseTitle: h.case_title || h.caseTitle || firstCase.title || 'Hearing Case',
-          court: h.court_name || h.court || firstCase.court_name || 'Court Room',
-        }));
-        setHearings(mappedHearings);
-      }
-
+      setActiveCase(aCase);
+      setHearings(h);
       setLoading(false);
     };
-
-    if (userId) fetchAll();
-  }, [userId]);
-
-  // Real-time: listen for new notifications (skip in mock mode)
-  useEffect(() => {
-    if (!userId || IS_MOCK_MODE) return;
-    const channel = supabase
-      .channel('client-notifications')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'notifications',
-          filter: `user_id=eq.${userId}`,
-        },
-        (payload) => {
-          const n = payload.new;
-          const newNotif = {
-            id: n.id,
-            text: n.text || n.message || '',
-            type: n.type || 'info',
-            timestamp: n.created_at ? new Date(n.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : 'Just now',
-            read: n.read ?? false,
-            icon: notifIcons[n.type] || 'ℹ️',
-          };
-          setNotifications(prev => [newNotif, ...prev.slice(0, 5)]);
-        }
-      )
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, [userId]);
+    fetchAll();
+  }, []);
 
   return { documents, notifications, activeCase, hearings, loading };
 };

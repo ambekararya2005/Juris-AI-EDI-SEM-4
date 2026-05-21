@@ -6,6 +6,8 @@ import Button from '../../components/ui/Button';
 import { getStatusBadge } from '../../components/ui/Badge';
 import { mockDocuments } from '../../data/mockData';
 import { useApp } from '../../context/AppContext';
+import { downloadPdf } from '../../utils/downloadPdf';
+
 
 // Multi-page document content mock split
 const PAGE_CONTENTS = [
@@ -75,12 +77,23 @@ const DocumentViewer: React.FC = () => {
   const zoomOut = () => setZoom(prev => Math.max(prev - 10, 55));
 
   const handlePrint = () => {
-    addToast('Printing document...', 'success');
+    window.print();
   };
 
   const handleDownload = () => {
-    addToast('Document download started successfully!', 'success');
+    const contentToDownload = doc.content || PAGE_CONTENTS.join('\n\n');
+    downloadPdf(
+      contentToDownload,
+      doc.title || 'Document',
+      {
+        title: doc.title || 'Document',
+        type: doc.type,
+        clientName: doc.clientName || 'Client',
+        date: doc.createdAt
+      }
+    );
   };
+
 
   return (
     <div className="max-w-3xl mx-auto space-y-4">

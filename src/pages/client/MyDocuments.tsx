@@ -8,9 +8,10 @@ import { TableRowSkeleton } from '../../components/ui/Skeleton';
 import EmptyState from '../../components/ui/EmptyState';
 import { DocumentType, DocumentStatus } from '../../types';
 import { useApp } from '../../context/AppContext';
-import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
-import { IS_MOCK_MODE, getMockAllClientDocuments } from '../../data/mockService';
+import { getMockAllClientDocuments } from '../../data/mockService';
+import { downloadPdf } from '../../utils/downloadPdf';
+
 
 const ALL_TYPES: DocumentType[] = ['Wakalatnama', 'Petition', 'Affidavit', 'Bail Application', 'Business Agreement', 'Rental Agreement'];
 const ALL_STATUSES: DocumentStatus[] = ['Draft', 'Under Review', 'Finalized', 'Revision Needed'];
@@ -157,38 +158,8 @@ const MyDocuments: React.FC = () => {
   const fetchDocs = useCallback(async () => {
     if (!user) return;
     setLoading(true);
-
-    // ── MOCK MODE ───────────────────────────────────────────────────────────
-    if (IS_MOCK_MODE) {
-      const docs = await getMockAllClientDocuments();
-      setDocuments(docs);
-      setLoading(false);
-      return;
-    }
-    // ── END MOCK MODE ─────────────────────────────────────────────────────
-
-    const { data, error } = await supabase
-      .from('documents')
-      .select('*')
-      .eq('client_id', user.id)
-      .order('created_at', { ascending: false });
-
-    if (!error && data) {
-      const mapped = data.map((doc: any) => ({
-        id: doc.id,
-        title: doc.title,
-        type: doc.type,
-        status: statusDbToUI[doc.status] || doc.status,
-        createdAt: doc.created_at ? new Date(doc.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
-        updatedAt: doc.updated_at ? new Date(doc.updated_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
-        clientId: doc.client_id,
-        clientName: doc.client_name || '',
-        lawyerId: doc.lawyer_id,
-        lawyerName: doc.lawyer_name || '',
-        content: doc.content || '',
-      }));
-      setDocuments(mapped);
-    }
+    const docs = await getMockAllClientDocuments();
+    setDocuments(docs);
     setLoading(false);
   }, [user]);
 
@@ -197,45 +168,16 @@ const MyDocuments: React.FC = () => {
   }, [fetchDocs]);
 
   const handleDelete = async (id: string) => {
-    // In mock mode: just filter locally
-    if (IS_MOCK_MODE) {
-      setDocuments(prev => prev.filter(d => d.id !== id));
-      setSelectedIds(prev => { const next = new Set(prev); next.delete(id); return next; });
-      addToast('Document removed (demo mode)', 'success');
-      return;
-    }
-    const { error } = await supabase.from('documents').delete().eq('id', id);
-    if (!error) {
-      setDocuments(prev => prev.filter(d => d.id !== id));
-      setSelectedIds(prev => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
-      addToast('Document deleted successfully', 'success');
-    } else {
-      addToast('Failed to delete document', 'error');
-    }
+    setDocuments(prev => prev.filter(d => d.id !== id));
+    setSelectedIds(prev => { const next = new Set(prev); next.delete(id); return next; });
+    addToast('Document removed', 'success');
   };
 
   const handleBulkDelete = async () => {
     const count = selectedIds.size;
-    const ids = Array.from(selectedIds);
-    // In mock mode: just filter locally
-    if (IS_MOCK_MODE) {
-      setDocuments(prev => prev.filter(d => !selectedIds.has(d.id)));
-      setSelectedIds(new Set());
-      addToast(`${count} document(s) removed (demo mode)`, 'success');
-      return;
-    }
-    const { error } = await supabase.from('documents').delete().in('id', ids);
-    if (!error) {
-      setDocuments(prev => prev.filter(d => !selectedIds.has(d.id)));
-      setSelectedIds(new Set());
-      addToast(`${count} document(s) deleted`, 'success');
-    } else {
-      addToast('Failed to delete selected documents', 'error');
-    }
+    setDocuments(prev => prev.filter(d => !selectedIds.has(d.id)));
+    setSelectedIds(new Set());
+    addToast(`${count} document(s) removed`, 'success');
   };
 
   const toggleFilter = <T extends string>(arr: T[], setter: (v: T[]) => void, val: T) => {
@@ -489,6 +431,18 @@ const MyDocuments: React.FC = () => {
                             </button>
                             {/* Download */}
                             <button
+                              onClick={() => {
+                                downloadPdf(
+                                  doc.content || 'Dummy legal content for preview.',
+                                  doc.title,
+                                  {
+                                    title: doc.title,
+                                    type: doc.type,
+                                    clientName: doc.clientName || 'Client Name',
+                                    date: doc.createdAt
+                                  }
+                                );
+                              }}
                               className="p-1.5 hover:bg-light-blue dark:hover:bg-slate-700 rounded-lg text-muted-text hover:text-navy dark:hover:text-blue-400 transition-colors"
                               title="Download"
                             >

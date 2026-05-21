@@ -9,6 +9,8 @@ import Button from '../../components/ui/Button';
 import EmptyState from '../../components/ui/EmptyState';
 import { useApp } from '../../context/AppContext';
 import { useSavedCases } from '../../hooks/useSavedCases';
+import { downloadPdf } from '../../utils/downloadPdf';
+
 
 // ─── Folder definitions ───────────────────────────────────────────────────────
 
@@ -168,8 +170,38 @@ const CaseLibrary: React.FC = () => {
   }
 
   function handleExport() {
-    addToast('Library exported as PDF', 'success');
+    if (savedCases.length === 0) {
+      addToast('No cases to export', 'info');
+      return;
+    }
+    const content = savedCases.map((c, i) => {
+      return `CASE #${i + 1}
+Title: ${c.case_title}
+Citation: ${c.citation}
+Court: ${c.court} (${c.year})
+Domain: ${c.domain}
+
+Summary:
+${c.summary}
+
+Notes:
+${c.notes || 'None'}
+--------------------------------------------------------------------------------
+`;
+    }).join('\n');
+
+    downloadPdf(
+      content,
+      'Saved_Cases_Library',
+      {
+        title: 'Saved Case Law Library Report',
+        type: 'Case Law Summary Export',
+        clientName: 'Juris-AI Lawyer Portal',
+        date: new Date().toLocaleDateString('en-IN')
+      }
+    );
   }
+
 
   if (loading) {
     return (

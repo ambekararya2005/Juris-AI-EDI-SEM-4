@@ -1,6 +1,5 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
 import {
   FileText, Clock, CheckCircle, TrendingUp,
@@ -13,14 +12,14 @@ import {
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import {
-  IS_MOCK_MODE,
   getMockLawyerQueue,
   getMockLawyerStats,
   getMockLawyerClients,
   getMockWeeklyReviews,
 } from '../../data/mockService';
 
-const useLawyerDashboardData = (lawyerId: string) => {
+
+const useLawyerDashboardData = (_lawyerId: string) => {
   const [queue, setQueue] = useState<any[]>([]);
   const [clients, setClients] = useState<any[]>([]);
   const [stats, setStats] = useState({
@@ -31,121 +30,27 @@ const useLawyerDashboardData = (lawyerId: string) => {
   useEffect(() => {
     const fetchAll = async () => {
       setLoading(true);
-
-      // ── MOCK MODE ───────────────────────────────────────────────────────────
-      if (IS_MOCK_MODE) {
-        const [q, s, c] = await Promise.all([
-          getMockLawyerQueue(),
-          getMockLawyerStats(),
-          getMockLawyerClients(),
-        ]);
-        setQueue(q);
-        setStats(s);
-        setClients(c);
-        setLoading(false);
-        return;
-      }
-      // ── END MOCK MODE ─────────────────────────────────────────────────────
-
-      const [queueRes, allDocsRes] = await Promise.all([
-        // Pending review queue — documents assigned to this lawyer
-        supabase
-          .from('documents')
-          .select(`
-            *,
-            client:profiles!documents_client_id_fkey (
-              id, full_name, avatar_initials, email
-            )
-          `)
-          .eq('lawyer_id', lawyerId)
-          .in('status', ['under_review', 'draft'])
-          .order('created_at', { ascending: false })
-          .limit(10),
-
-        // All docs for stats
-        supabase
-          .from('documents')
-          .select('id, status, created_at, updated_at')
-          .eq('lawyer_id', lawyerId),
+      const [q, s, c] = await Promise.all([
+        getMockLawyerQueue(),
+        getMockLawyerStats(),
+        getMockLawyerClients(),
       ]);
-
-      const docs = allDocsRes.data ?? [];
-      const today = new Date().toISOString().split('T')[0];
-
-      setQueue(queueRes.data ?? []);
-      setStats({
-        total: docs.filter(d =>
-          d.status === 'under_review' || d.status === 'draft'
-        ).length,
-        urgent: docs.filter(d => {
-          const created = new Date(d.created_at);
-          const hoursOld = (Date.now() - created.getTime()) / 36e5;
-          return d.status === 'under_review' && hoursOld < 24;
-        }).length,
-        reviewedToday: docs.filter(d =>
-          d.updated_at?.startsWith(today) && d.status === 'finalized'
-        ).length,
-        avgTurnaround: '1.8d'
-      });
-
-      // Get unique clients from queue
-      const uniqueClients = Object.values(
-        (queueRes.data ?? []).reduce((acc: any, doc: any) => {
-          if (doc.client && !acc[doc.client.id]) {
-            acc[doc.client.id] = { ...doc.client, docCount: 0 };
-          }
-          if (doc.client) acc[doc.client.id].docCount++;
-          return acc;
-        }, {})
-      );
-      setClients(uniqueClients.slice(0, 5));
-
+      setQueue(q);
+      setStats(s);
+      setClients(c);
       setLoading(false);
     };
-
-    if (lawyerId) fetchAll();
-  }, [lawyerId]);
-
-  // Real-time: new document assigned to lawyer (skip in mock mode)
-  useEffect(() => {
-    if (IS_MOCK_MODE) return;
-    const channel = supabase
-      .channel('lawyer-queue')
-      .on(
-        'postgres_changes',
-        {
-          event: 'INSERT',
-          schema: 'public',
-          table: 'documents',
-          filter: `lawyer_id=eq.${lawyerId}`,
-        },
-        (payload) => {
-          setQueue(prev => [payload.new, ...prev]);
-          setStats(prev => ({ ...prev, total: prev.total + 1 }));
-        }
-      )
-      .subscribe();
-
-    return () => { supabase.removeChannel(channel); };
-  }, [lawyerId]);
+    fetchAll();
+  }, []);
 
   return { queue, clients, stats, loading };
 };
 
-// Weekly bar chart data — last 7 days (or mock data in mock mode)
-const getWeeklyData = (docs: any[]) => {
-  if (IS_MOCK_MODE) return getMockWeeklyReviews();
-  const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
-  return days.map((day, i) => {
-    const date = new Date();
-    date.setDate(date.getDate() - (6 - i));
-    const dateStr = date.toISOString().split('T')[0];
-    return {
-      day,
-      reviews: docs.filter(d => d.updated_at?.startsWith(dateStr)).length
-    };
-  });
+// Weekly bar chart data — last 7 days (always uses mock data for demo)
+const getWeeklyData = (_docs: any[]) => {
+  return getMockWeeklyReviews();
 };
+
 
 const LawyerDashboard: React.FC = () => {
   const navigate = useNavigate();
