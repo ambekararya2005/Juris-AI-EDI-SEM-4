@@ -3,6 +3,8 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import { AppProvider } from './context/AppContext';
 import Layout from './components/layout/Layout';
+import DemoBanner from './components/DemoBanner';
+import { IS_MOCK_MODE } from './data/mockService';
 
 // Auth pages
 import Login from './pages/auth/Login';
@@ -39,9 +41,21 @@ const App: React.FC = () => {
     <AuthProvider>
       <AppProvider>
         <BrowserRouter>
+          <DemoBanner />
           <Routes>
             {/* Public */}
-            <Route path="/login" element={<Login />} />
+            <Route
+              path="/login"
+              element={
+                IS_MOCK_MODE
+                  ? <Navigate to={
+                      new URLSearchParams(window.location.search).get('role') === 'lawyer'
+                        ? '/lawyer/dashboard'
+                        : '/client/dashboard'
+                    } replace />
+                  : <Login />
+              }
+            />
             <Route path="/" element={<RoleRedirect />} />
 
             {/* Protected — with layout */}

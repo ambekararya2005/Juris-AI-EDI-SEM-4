@@ -4,6 +4,7 @@ import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
 import { ArrowRight, Clock } from 'lucide-react';
 import Card from '../../components/ui/Card';
+import { IS_MOCK_MODE, getMockReviewQueuePage } from '../../data/mockService';
 
 type Priority = 'all' | 'urgent' | 'normal' | 'low';
 
@@ -34,6 +35,15 @@ const ReviewQueue: React.FC = () => {
     const fetchQueue = async () => {
       setLoading(true);
 
+      // ── MOCK MODE ───────────────────────────────────────────────────────────
+      if (IS_MOCK_MODE) {
+        const data = await getMockReviewQueuePage();
+        setQueue(data);
+        setLoading(false);
+        return;
+      }
+      // ── END MOCK MODE ─────────────────────────────────────────────────────
+
       const { data, error } = await supabase
         .from('documents')
         .select(`
@@ -52,7 +62,8 @@ const ReviewQueue: React.FC = () => {
 
     fetchQueue();
 
-    // Real-time: new doc assigned
+    // Real-time: new doc assigned (skip in mock mode)
+    if (IS_MOCK_MODE) return;
     const channel = supabase
       .channel('review-queue')
       .on(

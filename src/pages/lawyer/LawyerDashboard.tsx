@@ -12,6 +12,13 @@ import {
 } from 'recharts';
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
+import {
+  IS_MOCK_MODE,
+  getMockLawyerQueue,
+  getMockLawyerStats,
+  getMockLawyerClients,
+  getMockWeeklyReviews,
+} from '../../data/mockService';
 
 const useLawyerDashboardData = (lawyerId: string) => {
   const [queue, setQueue] = useState<any[]>([]);
@@ -24,6 +31,21 @@ const useLawyerDashboardData = (lawyerId: string) => {
   useEffect(() => {
     const fetchAll = async () => {
       setLoading(true);
+
+      // ── MOCK MODE ───────────────────────────────────────────────────────────
+      if (IS_MOCK_MODE) {
+        const [q, s, c] = await Promise.all([
+          getMockLawyerQueue(),
+          getMockLawyerStats(),
+          getMockLawyerClients(),
+        ]);
+        setQueue(q);
+        setStats(s);
+        setClients(c);
+        setLoading(false);
+        return;
+      }
+      // ── END MOCK MODE ─────────────────────────────────────────────────────
 
       const [queueRes, allDocsRes] = await Promise.all([
         // Pending review queue — documents assigned to this lawyer
@@ -84,8 +106,9 @@ const useLawyerDashboardData = (lawyerId: string) => {
     if (lawyerId) fetchAll();
   }, [lawyerId]);
 
-  // Real-time: new document assigned to lawyer
+  // Real-time: new document assigned to lawyer (skip in mock mode)
   useEffect(() => {
+    if (IS_MOCK_MODE) return;
     const channel = supabase
       .channel('lawyer-queue')
       .on(
@@ -109,8 +132,9 @@ const useLawyerDashboardData = (lawyerId: string) => {
   return { queue, clients, stats, loading };
 };
 
-// Weekly bar chart data — last 7 days
+// Weekly bar chart data — last 7 days (or mock data in mock mode)
 const getWeeklyData = (docs: any[]) => {
+  if (IS_MOCK_MODE) return getMockWeeklyReviews();
   const days = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
   return days.map((day, i) => {
     const date = new Date();

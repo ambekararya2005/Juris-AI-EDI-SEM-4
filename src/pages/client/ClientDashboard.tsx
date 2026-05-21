@@ -11,6 +11,13 @@ import { getStatusBadge } from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
 import Skeleton from '../../components/ui/Skeleton';
 import { mockActivityData } from '../../data/mockData';
+import {
+  IS_MOCK_MODE,
+  getMockClientDocuments,
+  getMockClientNotifications,
+  getMockActiveCase,
+  getMockClientHearings,
+} from '../../data/mockService';
 import { useApp } from '../../context/AppContext';
 import { OnboardingModal } from '../../components/OnboardingModal';
 import { supabase } from '../../lib/supabase';
@@ -325,6 +332,23 @@ const useClientDashboardData = (userId: string) => {
     const fetchAll = async () => {
       setLoading(true);
 
+      // ── MOCK MODE ────────────────────────────────────────────────────────────
+      if (IS_MOCK_MODE) {
+        const [docs, notifs, aCase, h] = await Promise.all([
+          getMockClientDocuments(),
+          getMockClientNotifications(),
+          getMockActiveCase(),
+          getMockClientHearings(),
+        ]);
+        setDocuments(docs);
+        setNotifications(notifs);
+        setActiveCase(aCase);
+        setHearings(h);
+        setLoading(false);
+        return;
+      }
+      // ── END MOCK MODE ────────────────────────────────────────────────────────
+
       const [docsRes, notifsRes, caseRes] = await Promise.all([
         supabase
           .from('documents')
@@ -406,9 +430,9 @@ const useClientDashboardData = (userId: string) => {
     if (userId) fetchAll();
   }, [userId]);
 
-  // Real-time: listen for new notifications
+  // Real-time: listen for new notifications (skip in mock mode)
   useEffect(() => {
-    if (!userId) return;
+    if (!userId || IS_MOCK_MODE) return;
     const channel = supabase
       .channel('client-notifications')
       .on(

@@ -10,6 +10,7 @@ import { DocumentType, DocumentStatus } from '../../types';
 import { useApp } from '../../context/AppContext';
 import { supabase } from '../../lib/supabase';
 import { useAuth } from '../../context/AuthContext';
+import { IS_MOCK_MODE, getMockAllClientDocuments } from '../../data/mockService';
 
 const ALL_TYPES: DocumentType[] = ['Wakalatnama', 'Petition', 'Affidavit', 'Bail Application', 'Business Agreement', 'Rental Agreement'];
 const ALL_STATUSES: DocumentStatus[] = ['Draft', 'Under Review', 'Finalized', 'Revision Needed'];
@@ -156,6 +157,16 @@ const MyDocuments: React.FC = () => {
   const fetchDocs = useCallback(async () => {
     if (!user) return;
     setLoading(true);
+
+    // ── MOCK MODE ───────────────────────────────────────────────────────────
+    if (IS_MOCK_MODE) {
+      const docs = await getMockAllClientDocuments();
+      setDocuments(docs);
+      setLoading(false);
+      return;
+    }
+    // ── END MOCK MODE ─────────────────────────────────────────────────────
+
     const { data, error } = await supabase
       .from('documents')
       .select('*')
@@ -186,6 +197,13 @@ const MyDocuments: React.FC = () => {
   }, [fetchDocs]);
 
   const handleDelete = async (id: string) => {
+    // In mock mode: just filter locally
+    if (IS_MOCK_MODE) {
+      setDocuments(prev => prev.filter(d => d.id !== id));
+      setSelectedIds(prev => { const next = new Set(prev); next.delete(id); return next; });
+      addToast('Document removed (demo mode)', 'success');
+      return;
+    }
     const { error } = await supabase.from('documents').delete().eq('id', id);
     if (!error) {
       setDocuments(prev => prev.filter(d => d.id !== id));
@@ -203,6 +221,13 @@ const MyDocuments: React.FC = () => {
   const handleBulkDelete = async () => {
     const count = selectedIds.size;
     const ids = Array.from(selectedIds);
+    // In mock mode: just filter locally
+    if (IS_MOCK_MODE) {
+      setDocuments(prev => prev.filter(d => !selectedIds.has(d.id)));
+      setSelectedIds(new Set());
+      addToast(`${count} document(s) removed (demo mode)`, 'success');
+      return;
+    }
     const { error } = await supabase.from('documents').delete().in('id', ids);
     if (!error) {
       setDocuments(prev => prev.filter(d => !selectedIds.has(d.id)));
