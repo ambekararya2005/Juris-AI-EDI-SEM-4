@@ -1,43 +1,60 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Mail, Lock, Eye, EyeOff, Scale } from 'lucide-react';
+import { Mail, Lock, Eye, EyeOff, Scale, AlertCircle, User, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import Button from '../../components/ui/Button';
 
 const Login: React.FC = () => {
+  const [isSignUp, setIsSignUp] = useState(false);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [fullName, setFullName] = useState('');
+  const [role, setRole] = useState<'client' | 'lawyer'>('client');
   const [showPassword, setShowPassword] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const { login, loginAsDemo } = useAuth();
+
+  const { signIn, signUp, user } = useAuth();
   const navigate = useNavigate();
 
-  const handleLogin = async (e: React.FormEvent) => {
+  useEffect(() => {
+    if (user) {
+      navigate(user.role === 'lawyer' ? '/lawyer/dashboard' : '/client/dashboard', { replace: true });
+    }
+  }, [user, navigate]);
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
-    await new Promise(r => setTimeout(r, 800));
-    const success = login(email, password);
-    if (success) {
-      const user = email.includes('advocate') || email.includes('legal') ? 'lawyer' : 'client';
-      navigate(user === 'lawyer' ? '/lawyer/dashboard' : '/client/dashboard');
-    } else {
-      setError('Invalid email or password. Try demo buttons below.');
-    }
-    setLoading(false);
-  };
+    setError(null);
+    setSuccessMsg(null);
 
-  const handleDemo = (role: 'client' | 'lawyer') => {
-    loginAsDemo(role);
-    navigate(role === 'lawyer' ? '/lawyer/dashboard' : '/client/dashboard');
+    if (isSignUp) {
+      const { error: signUpError } = await signUp(email, password, role, fullName);
+      if (signUpError) {
+        setError(signUpError);
+        setLoading(false);
+      } else {
+        setSuccessMsg('Account created successfully! If email confirmation is enabled, please verify your email; otherwise, you can sign in.');
+        setIsSignUp(false);
+        setPassword('');
+        setLoading(false);
+      }
+    } else {
+      const { error: signInError } = await signIn(email, password);
+      if (signInError) {
+        setError('Invalid email or password. Please try again.');
+        setLoading(false);
+      }
+    }
   };
 
   return (
     <div className="min-h-screen flex">
       {/* Left Decorative Panel */}
       <div className="hidden lg:flex lg:w-5/12 relative bg-navy flex-col justify-center px-12 overflow-hidden">
-        {/* Floating icons */}
+        {/* Floating elements */}
         {[
           { icon: '⚖️', size: 80, top: '10%', left: '15%', delay: '0s' },
           { icon: '📜', size: 60, top: '65%', left: '70%', delay: '2s' },
@@ -47,7 +64,7 @@ const Login: React.FC = () => {
         ].map((item, i) => (
           <div
             key={i}
-            className="absolute float-icon"
+            className="absolute float-icon select-none"
             style={{
               fontSize: item.size,
               top: item.top,
@@ -92,7 +109,7 @@ const Login: React.FC = () => {
       </div>
 
       {/* Right Form Panel */}
-      <div className="flex-1 flex items-center justify-center bg-white p-8">
+      <div className="flex-grow flex items-center justify-center bg-white p-8">
         <div className="w-full max-w-md">
           {/* Mobile logo */}
           <div className="flex items-center gap-2 mb-8 lg:hidden">
@@ -102,10 +119,33 @@ const Login: React.FC = () => {
             </span>
           </div>
 
-          <h1 className="font-serif text-3xl font-bold text-dark-text mb-1">Welcome back</h1>
-          <p className="text-muted-text text-sm mb-8">Sign in to your JurisAI account</p>
+          <h1 className="font-serif text-3xl font-bold text-dark-text mb-1">
+            {isSignUp ? 'Create an account' : 'Welcome back'}
+          </h1>
+          <p className="text-muted-text text-sm mb-8">
+            {isSignUp ? 'Get started with your digital legal workspace' : 'Sign in to your JurisAI account'}
+          </p>
 
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {isSignUp && (
+              <div>
+                <label className="block text-sm font-medium text-dark-text mb-1.5">Full Name</label>
+                <div className="relative">
+                  <User size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-text" />
+                  <input
+                    type="text"
+                    value={fullName}
+                    onChange={e => setFullName(e.target.value)}
+                    placeholder="Enter your full name"
+                    required
+                    className="w-full pl-10 pr-4 py-3 border border-border rounded-xl text-sm text-dark-text
+                      placeholder:text-muted-text/60 focus:outline-none focus:ring-2 focus:ring-blue-brand/30
+                      focus:border-blue-brand transition-all bg-surface-gray"
+                  />
+                </div>
+              </div>
+            )}
+
             <div>
               <label className="block text-sm font-medium text-dark-text mb-1.5">Email address</label>
               <div className="relative">
@@ -115,6 +155,7 @@ const Login: React.FC = () => {
                   value={email}
                   onChange={e => setEmail(e.target.value)}
                   placeholder="you@example.com"
+                  required
                   className="w-full pl-10 pr-4 py-3 border border-border rounded-xl text-sm text-dark-text
                     placeholder:text-muted-text/60 focus:outline-none focus:ring-2 focus:ring-blue-brand/30
                     focus:border-blue-brand transition-all bg-surface-gray"
@@ -131,6 +172,7 @@ const Login: React.FC = () => {
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   placeholder="••••••••"
+                  required
                   className="w-full pl-10 pr-10 py-3 border border-border rounded-xl text-sm text-dark-text
                     placeholder:text-muted-text/60 focus:outline-none focus:ring-2 focus:ring-blue-brand/30
                     focus:border-blue-brand transition-all bg-surface-gray"
@@ -146,10 +188,57 @@ const Login: React.FC = () => {
               </div>
             </div>
 
+            {isSignUp && (
+              <div>
+                <label className="block text-sm font-medium text-dark-text mb-3">Join as</label>
+                <div className="grid grid-cols-2 gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setRole('client')}
+                    className={`flex flex-col items-center gap-2 p-4 border-2 rounded-xl transition-all duration-200
+                      ${role === 'client' 
+                        ? 'border-navy bg-light-blue dark:bg-blue-950/20' 
+                        : 'border-border hover:border-navy/50 bg-transparent'
+                      }`}
+                  >
+                    <span className="text-2xl">👤</span>
+                    <span className={`text-sm font-semibold ${role === 'client' ? 'text-navy font-bold' : 'text-dark-text'}`}>
+                      Client
+                    </span>
+                    <span className="text-[10px] text-muted-text text-center">Seek legal drafting & review</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setRole('lawyer')}
+                    className={`flex flex-col items-center gap-2 p-4 border-2 rounded-xl transition-all duration-200
+                      ${role === 'lawyer' 
+                        ? 'border-gold bg-amber-50 dark:bg-amber-950/20' 
+                        : 'border-border hover:border-gold/50 bg-transparent'
+                      }`}
+                  >
+                    <span className="text-2xl">⚖️</span>
+                    <span className={`text-sm font-semibold ${role === 'lawyer' ? 'text-gold font-bold' : 'text-dark-text'}`}>
+                      Advocate / Lawyer
+                    </span>
+                    <span className="text-[10px] text-muted-text text-center">Review documents & pre-screen cases</span>
+                  </button>
+                </div>
+              </div>
+            )}
+
             {error && (
-              <p className="text-sm text-risk bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+              <div className="flex items-center gap-2 bg-red-50 border border-red-200 text-red-700 rounded-xl px-4 py-3 text-sm font-sans">
+                <AlertCircle size={16} className="flex-shrink-0" />
                 {error}
-              </p>
+              </div>
+            )}
+
+            {successMsg && (
+              <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-700 rounded-xl px-4 py-3 text-sm font-sans">
+                <CheckCircle2 size={16} className="flex-shrink-0" />
+                {successMsg}
+              </div>
             )}
 
             <Button
@@ -159,45 +248,25 @@ const Login: React.FC = () => {
               loading={loading}
               className="w-full"
             >
-              Sign In
+              {isSignUp ? 'Sign Up' : 'Sign In'}
             </Button>
           </form>
 
-          <div className="mt-6 text-center text-sm text-muted-text">
-            Don't have an account?{' '}
-            <a href="#!" className="text-blue-brand hover:underline font-medium">Sign up</a>
-          </div>
-
-          {/* Divider */}
-          <div className="flex items-center gap-3 my-6">
-            <div className="flex-1 h-px bg-border" />
-            <span className="text-xs text-muted-text">or continue as demo</span>
-            <div className="flex-1 h-px bg-border" />
-          </div>
-
-          {/* Demo Buttons */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* Toggle link */}
+          <div className="text-center mt-6">
             <button
-              onClick={() => handleDemo('client')}
-              className="flex flex-col items-center gap-2 p-4 border-2 border-border rounded-xl
-                hover:border-navy hover:bg-light-blue transition-all duration-200 group"
+              type="button"
+              onClick={() => {
+                setIsSignUp(!isSignUp);
+                setError(null);
+                setSuccessMsg(null);
+              }}
+              className="text-sm text-blue-brand hover:underline font-semibold"
             >
-              <span className="text-2xl">👤</span>
-              <span className="text-sm font-medium text-dark-text group-hover:text-navy">
-                Demo as Client
-              </span>
-              <span className="text-xs text-muted-text">Priya Sharma</span>
-            </button>
-            <button
-              onClick={() => handleDemo('lawyer')}
-              className="flex flex-col items-center gap-2 p-4 border-2 border-border rounded-xl
-                hover:border-gold hover:bg-amber-50 transition-all duration-200 group"
-            >
-              <span className="text-2xl">⚖️</span>
-              <span className="text-sm font-medium text-dark-text group-hover:text-gold">
-                Demo as Lawyer
-              </span>
-              <span className="text-xs text-muted-text">Adv. Rahul Patil</span>
+              {isSignUp 
+                ? 'Already have an account? Sign In' 
+                : "Don't have an account? Sign Up"
+              }
             </button>
           </div>
         </div>

@@ -62,7 +62,7 @@ const NavItems: React.FC<{ collapsed: boolean; items: NavItem[] }> = ({ collapse
 
 const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onMobileClose }) => {
   const [collapsed, setCollapsed] = useState(false);
-  const { user, logout } = useAuth();
+  const { user, signOut } = useAuth();
   const navigate = useNavigate();
 
   const navItems = user?.role === 'lawyer' ? lawyerNavItems : clientNavItems;
@@ -71,7 +71,7 @@ const Sidebar: React.FC<SidebarProps> = ({ mobileOpen = false, onMobileClose }) 
     : '?';
 
   const handleLogout = () => {
-    logout();
+    signOut();
     navigate('/login');
     onMobileClose?.();
   };

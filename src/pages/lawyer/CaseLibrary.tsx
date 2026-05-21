@@ -7,9 +7,8 @@ import {
 import Card from '../../components/ui/Card';
 import Button from '../../components/ui/Button';
 import EmptyState from '../../components/ui/EmptyState';
-import { mockCases } from '../../data/mockData';
 import { useApp } from '../../context/AppContext';
-import { CaseResult } from '../../types';
+import { useSavedCases } from '../../hooks/useSavedCases';
 
 // ─── Folder definitions ───────────────────────────────────────────────────────
 
@@ -22,28 +21,37 @@ interface FolderDef {
 }
 
 const FOLDERS: FolderDef[] = [
-  { id: 'criminal', label: 'Criminal Law', domain: 'Criminal', color: 'text-risk', badgeBg: 'bg-red-100 text-risk' },
-  { id: 'civil', label: 'Civil Law', domain: 'Civil', color: 'text-blue-brand', badgeBg: 'bg-blue-100 text-blue-brand' },
-  { id: 'commercial', label: 'Commercial Law', domain: 'Commercial', color: 'text-amber-700', badgeBg: 'bg-amber-100 text-amber-700' },
+  { id: 'criminal', label: 'Criminal Law', domain: 'Criminal', color: 'text-risk', badgeBg: 'bg-red-100 text-risk dark:bg-red-900/40 dark:text-red-300' },
+  { id: 'civil', label: 'Civil Law', domain: 'Civil', color: 'text-blue-brand', badgeBg: 'bg-blue-100 text-blue-brand dark:bg-blue-900/40 dark:text-blue-300' },
+  { id: 'commercial', label: 'Commercial Law', domain: 'Commercial', color: 'text-amber-700', badgeBg: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300' },
 ];
 
 // ─── Sub-components ───────────────────────────────────────────────────────────
 
 interface CaseCardProps {
-  c: CaseResult;
+  c: {
+    id: string;
+    case_title: string;
+    court: string;
+    year: number;
+    citation: string;
+    domain: string;
+    summary: string;
+    notes?: string;
+  };
   onRemove: () => void;
-  onNoteSave: () => void;
+  onNoteSave: (notes: string) => void;
 }
 
 const CaseCard: React.FC<CaseCardProps> = ({ c, onRemove, onNoteSave }) => {
-  const [note, setNote] = useState('');
+  const [note, setNote] = useState(c.notes || '');
 
   return (
     <Card className="p-4 dark:bg-slate-800 space-y-3">
       {/* Header row */}
       <div className="flex items-start justify-between gap-2">
         <div className="flex-1 min-w-0">
-          <p className="font-semibold text-sm text-dark-text dark:text-slate-100 leading-snug">{c.caseName}</p>
+          <p className="font-semibold text-sm text-dark-text dark:text-slate-100 leading-snug">{c.case_title}</p>
           <div className="flex items-center gap-1.5 flex-wrap mt-1">
             <p className="font-mono text-xs text-gold">{c.citation}</p>
             <span className="text-muted-text dark:text-slate-500 text-[10px]">·</span>
@@ -61,7 +69,7 @@ const CaseCard: React.FC<CaseCardProps> = ({ c, onRemove, onNoteSave }) => {
         rows={2}
         value={note}
         onChange={e => setNote(e.target.value)}
-        onBlur={onNoteSave}
+        onBlur={() => onNoteSave(note)}
         placeholder="Add notes..."
         className="w-full px-2.5 py-1.5 text-xs border border-border dark:border-slate-600 rounded-xl
           bg-surface-gray dark:bg-slate-900 text-dark-text dark:text-slate-200
@@ -85,9 +93,9 @@ const CaseCard: React.FC<CaseCardProps> = ({ c, onRemove, onNoteSave }) => {
 
 interface FolderSectionProps {
   folder: FolderDef;
-  cases: CaseResult[];
+  cases: any[];
   onRemove: (id: string) => void;
-  onNoteSave: () => void;
+  onNoteSave: (id: string, notes: string) => void;
 }
 
 const FolderSection: React.FC<FolderSectionProps> = ({ folder, cases, onRemove, onNoteSave }) => {
@@ -131,7 +139,7 @@ const FolderSection: React.FC<FolderSectionProps> = ({ folder, cases, onRemove, 
                   key={c.id}
                   c={c}
                   onRemove={() => onRemove(c.id)}
-                  onNoteSave={onNoteSave}
+                  onNoteSave={(notes) => onNoteSave(c.id, notes)}
                 />
               ))}
             </div>
@@ -145,31 +153,34 @@ const FolderSection: React.FC<FolderSectionProps> = ({ folder, cases, onRemove, 
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 const CaseLibrary: React.FC = () => {
-  const { savedCases, toggleSavedCase, addToast } = useApp();
+  const { addToast } = useApp();
+  const { savedCases, loading, unsaveCase, updateNotes } = useSavedCases();
   const navigate = useNavigate();
 
-  // Local removals (in addition to the global toggle)
-  const [removed, setRemoved] = useState<string[]>([]);
-
-  const visibleSaved = savedCases.filter(id => !removed.includes(id));
-  const savedCaseObjects = mockCases.filter(c => visibleSaved.includes(c.id));
-
   function handleRemove(id: string) {
-    setRemoved(prev => [...prev, id]);
-    // Also toggle from global saved list
-    toggleSavedCase(id);
+    unsaveCase(id);
     addToast('Removed from library', 'success');
   }
 
-  function handleNoteSave() {
-    addToast('Note saved', 'info');
+  function handleNoteSave(id: string, notes: string) {
+    updateNotes(id, notes);
+    addToast('Note saved', 'success');
   }
 
   function handleExport() {
     addToast('Library exported as PDF', 'success');
   }
 
-  const totalSaved = savedCaseObjects.length;
+  if (loading) {
+    return (
+      <div className="p-6 space-y-4">
+        <div className="h-10 bg-gray-100 dark:bg-slate-800 rounded-xl animate-pulse w-1/4" />
+        <div className="h-32 bg-gray-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
+      </div>
+    );
+  }
+
+  const totalSaved = savedCases.length;
 
   return (
     <div className="space-y-6">
@@ -205,7 +216,7 @@ const CaseLibrary: React.FC = () => {
       ) : (
         <div className="space-y-6">
           {FOLDERS.map(folder => {
-            const folderCases = savedCaseObjects.filter(c => c.domain === folder.domain);
+            const folderCases = savedCases.filter(c => c.domain?.toLowerCase() === folder.domain?.toLowerCase());
             return (
               <FolderSection
                 key={folder.id}

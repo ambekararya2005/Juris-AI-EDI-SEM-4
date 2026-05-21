@@ -4,6 +4,9 @@ import { Check, ChevronRight, Scale, FileText, Gavel, BookOpen, Briefcase, Home,
 import Stepper from '../../components/ui/Stepper';
 import Button from '../../components/ui/Button';
 import { BAIL_APPLICATION_CONTENT, mockDistricts, mockIPCSections } from '../../data/mockData';
+import { useAuth } from '../../context/AuthContext';
+import { useApp } from '../../context/AppContext';
+import { supabase } from '../../lib/supabase';
 
 const DOC_TYPES = [
   { id: 'Wakalatnama', icon: <Scale size={28} />, desc: 'Power of attorney for your legal representative', label: 'Wakalatnama' },
@@ -39,6 +42,8 @@ interface SelectedSection {
 
 const DocumentWizard: React.FC = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { addToast } = useApp();
   const [step, setStep] = useState(0);
   const [generating, setGenerating] = useState(false);
   const [form, setForm] = useState<FormData>({
@@ -99,7 +104,27 @@ const DocumentWizard: React.FC = () => {
   const handleGenerate = async () => {
     setStep(3);
     setGenerating(true);
-    await new Promise(r => setTimeout(r, 2500));
+
+    const { error } = await supabase
+      .from('documents')
+      .insert([
+        {
+          title: `${form.docType} - ${form.fullName || 'Draft'}`,
+          type: form.docType,
+          status: 'draft',
+          content: BAIL_APPLICATION_CONTENT,
+          client_id: user?.id,
+        }
+      ]);
+
+    await new Promise(r => setTimeout(r, 2000));
+
+    if (error) {
+      addToast('Failed to save generated draft in database.', 'error');
+    } else {
+      addToast('Document generated and saved to your dashboard.', 'success');
+    }
+
     setGenerating(false);
   };
 

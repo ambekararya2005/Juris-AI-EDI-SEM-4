@@ -101,7 +101,7 @@ interface LayoutProps {
 }
 
 const Layout: React.FC<LayoutProps> = ({ requireAuth = true }) => {
-  const { isAuthenticated, user } = useAuth();
+  const { user, loading } = useAuth();
   const location = useLocation();
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
 
@@ -113,7 +113,18 @@ const Layout: React.FC<LayoutProps> = ({ requireAuth = true }) => {
     setMobileSidebarOpen(false);
   }, [location]);
 
-  if (requireAuth && !isAuthenticated) {
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-surface-gray dark:bg-slate-900">
+        <div className="flex flex-col items-center gap-4">
+          <div className="w-12 h-12 border-4 border-navy/20 border-t-navy rounded-full animate-spin" />
+          <p className="text-sm text-muted-text font-sans font-medium">Loading JurisAI…</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (requireAuth && !user) {
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 

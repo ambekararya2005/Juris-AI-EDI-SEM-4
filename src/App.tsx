@@ -25,6 +25,15 @@ import ContractRisk from './pages/shared/ContractRisk';
 import DocumentViewer from './pages/shared/DocumentViewer';
 import Settings from './pages/shared/Settings';
 
+import { useAuth } from './context/AuthContext';
+
+// Smart redirect based on role
+const RoleRedirect: React.FC = () => {
+  const { user } = useAuth();
+  if (!user) return <Navigate to="/login" replace />;
+  return <Navigate to={user.role === 'lawyer' ? '/lawyer/dashboard' : '/client/dashboard'} replace />;
+};
+
 const App: React.FC = () => {
   return (
     <AuthProvider>
@@ -33,7 +42,7 @@ const App: React.FC = () => {
           <Routes>
             {/* Public */}
             <Route path="/login" element={<Login />} />
-            <Route path="/" element={<Navigate to="/login" replace />} />
+            <Route path="/" element={<RoleRedirect />} />
 
             {/* Protected — with layout */}
             <Route element={<Layout requireAuth={true} />}>

@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useLocation } from 'react-router-dom';
 import { Bell, Search, ChevronRight, Moon, Sun, Menu, CheckCheck, X } from 'lucide-react';
-import { useApp } from '../../context/AppContext';
+import { useNotifications } from '../../hooks/useNotifications';
 
 // ─── Breadcrumb map ───────────────────────────────────────────
 const breadcrumbMap: Record<string, string[]> = {
@@ -60,7 +60,7 @@ interface TopBarProps {
 }
 
 const TopBar: React.FC<TopBarProps> = ({ onMenuClick }) => {
-  const { notifications, markAllRead, unreadCount } = useApp();
+  const { notifications, markAllRead, unreadCount } = useNotifications();
   const [notifOpen, setNotifOpen] = useState(false);
   const notifRef = useRef<HTMLDivElement>(null);
   const location = useLocation();

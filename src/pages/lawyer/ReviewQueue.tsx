@@ -1,154 +1,239 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../context/AuthContext';
+import { ArrowRight, Clock } from 'lucide-react';
 import Card from '../../components/ui/Card';
-import Button from '../../components/ui/Button';
-import { getPriorityBadge } from '../../components/ui/Badge';
-import EmptyState from '../../components/ui/EmptyState';
-import { CardSkeleton } from '../../components/ui/Skeleton';
-import useSimulatedLoading from '../../hooks/useSimulatedLoading';
-import { mockReviewQueue } from '../../data/mockData';
 
-// ─── Types ────────────────────────────────────────────────────────────────────
-type FilterTab = 'ALL' | 'HIGH' | 'MEDIUM' | 'LOW';
+type Priority = 'all' | 'urgent' | 'normal' | 'low';
 
-const TABS: { label: string; value: FilterTab }[] = [
-  { label: 'All', value: 'ALL' },
-  { label: 'Urgent', value: 'HIGH' },
-  { label: 'Medium', value: 'MEDIUM' },
-  { label: 'Low', value: 'LOW' },
-];
+const getPriority = (createdAt: string): 'urgent' | 'normal' | 'low' => {
+  const hoursOld = (Date.now() - new Date(createdAt).getTime()) / 36e5;
+  if (hoursOld < 12) return 'urgent';
+  if (hoursOld < 48) return 'normal';
+  return 'low';
+};
 
-// ─── Client avatar initials from name ────────────────────────────────────────
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map(n => n[0].toUpperCase())
-    .join('');
-}
+const timeAgo = (dateStr: string): string => {
+  const diff = Date.now() - new Date(dateStr).getTime();
+  const h = Math.floor(diff / 36e5);
+  const d = Math.floor(h / 24);
+  if (h < 1) return 'Just now';
+  if (h < 24) return `${h}h ago`;
+  return `${d}d ago`;
+};
 
-// ─── Main Component ───────────────────────────────────────────────────────────
 const ReviewQueue: React.FC = () => {
   const navigate = useNavigate();
-  const { isLoading, triggerLoad } = useSimulatedLoading(1000);
-  const [activeTab, setActiveTab] = useState<FilterTab>('ALL');
+  const { user } = useAuth();
+  const [queue, setQueue] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<Priority>('all');
 
-  // Trigger skeleton on mount
   useEffect(() => {
-    triggerLoad();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    const fetchQueue = async () => {
+      setLoading(true);
 
-  // Filter queue based on active tab
-  const filtered =
-    activeTab === 'ALL'
-      ? mockReviewQueue
-      : mockReviewQueue.filter(item => item.priority === activeTab);
+      const { data, error } = await supabase
+        .from('documents')
+        .select(`
+          *,
+          client:profiles!documents_client_id_fkey (
+            id, full_name, avatar_initials, email, phone
+          )
+        `)
+        .eq('lawyer_id', user!.id)
+        .in('status', ['under_review', 'draft'])
+        .order('created_at', { ascending: true }); // oldest first = most urgent
+
+      if (!error) setQueue(data ?? []);
+      setLoading(false);
+    };
+
+    fetchQueue();
+
+    // Real-time: new doc assigned
+    const channel = supabase
+      .channel('review-queue')
+      .on(
+        'postgres_changes',
+        {
+          event: '*',
+          schema: 'public',
+          table: 'documents',
+          filter: `lawyer_id=eq.${user!.id}`,
+        },
+        () => { fetchQueue(); } // refetch on any change
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [user]);
+
+  const filtered = queue.filter(doc => {
+    if (filter === 'all') return true;
+    return getPriority(doc.created_at) === filter;
+  });
+
+  const counts = {
+    all: queue.length,
+    urgent: queue.filter(d => getPriority(d.created_at) === 'urgent').length,
+    normal: queue.filter(d => getPriority(d.created_at) === 'normal').length,
+    low: queue.filter(d => getPriority(d.created_at) === 'low').length,
+  };
+
+  const priorityStyles: Record<string, string> = {
+    urgent: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-300',
+    normal: 'bg-blue-100 text-blue-700 dark:bg-blue-900/40 dark:text-blue-300',
+    low: 'bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-300',
+  };
+
+  if (loading) {
+    return (
+      <div className="p-6 space-y-3">
+        {[...Array(5)].map((_, i) => (
+          <div key={i} className="h-20 bg-gray-100 dark:bg-slate-800 rounded-2xl animate-pulse" />
+        ))}
+      </div>
+    );
+  }
 
   return (
-    <div className="space-y-6">
-      {/* ── Page Header ─────────────────────────────────────────────────── */}
-      <div className="flex items-center justify-between">
+    <div className="p-6">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-5">
         <div>
-          <h1 className="font-serif text-2xl font-bold text-dark-text dark:text-slate-100">Review Queue</h1>
-          <p className="text-muted-text dark:text-slate-400 text-sm mt-1">Documents awaiting your legal review</p>
+          <h1 className="font-serif text-2xl font-bold text-dark-text dark:text-slate-100">
+            Review Queue
+          </h1>
+          <p className="text-sm text-muted-text dark:text-slate-400 font-sans mt-0.5">
+            {queue.length} document{queue.length !== 1 ? 's' : ''} awaiting review
+          </p>
         </div>
-        <span className="px-3 py-1.5 bg-risk/10 text-risk text-sm font-semibold rounded-full">
-          {mockReviewQueue.length} pending
-        </span>
       </div>
 
-      {/* ── Priority Filter Tabs ─────────────────────────────────────────── */}
-      <div className="flex gap-0 border-b border-border dark:border-slate-700">
-        {TABS.map(tab => (
+      {/* Filter Tabs */}
+      <div className="flex gap-1 bg-surface-gray dark:bg-slate-700 rounded-xl p-1 w-fit mb-6">
+        {(['all', 'urgent', 'normal', 'low'] as Priority[]).map(tab => (
           <button
-            key={tab.value}
-            id={`review-tab-${tab.value.toLowerCase()}`}
-            onClick={() => setActiveTab(tab.value)}
-            className={[
-              'px-5 py-2.5 text-sm font-medium transition-colors focus:outline-none',
-              activeTab === tab.value
-                ? 'border-b-2 border-gold text-navy dark:text-blue-300 -mb-px'
-                : 'text-muted-text dark:text-slate-400 hover:text-dark-text dark:hover:text-slate-200',
-            ].join(' ')}
+            key={tab}
+            onClick={() => setFilter(tab)}
+            className={`px-3 py-1.5 rounded-lg text-sm font-semibold font-sans
+              transition-all capitalize ${
+              filter === tab
+                ? 'bg-white dark:bg-slate-800 text-navy dark:text-blue-300 shadow-sm'
+                : 'text-muted-text dark:text-slate-400 hover:text-dark-text dark:hover:text-slate-200'
+            }`}
           >
-            {tab.label}
-            {tab.value !== 'ALL' && (
-              <span className="ml-1.5 text-xs opacity-70">
-                ({mockReviewQueue.filter(i => i.priority === tab.value).length})
-              </span>
-            )}
+            {tab}
+            <span className="ml-1.5 text-xs bg-light-blue dark:bg-slate-600 text-navy dark:text-blue-300 rounded-full px-1.5 py-0.5">
+              {counts[tab]}
+            </span>
           </button>
         ))}
       </div>
 
-      {/* ── Content ───────────────────────────────────────────────────────── */}
-      {isLoading ? (
-        /* Skeleton loaders */
-        <div className="space-y-4">
-          <CardSkeleton />
-          <CardSkeleton />
-          <CardSkeleton />
-        </div>
-      ) : filtered.length === 0 ? (
-        /* Empty state */
-        <Card className="dark:bg-slate-800">
-          <EmptyState
-            title="No items in queue"
-            subtitle="All caught up!"
-          />
-        </Card>
-      ) : (
-        /* Document cards */
-        <div className="space-y-3">
-          {filtered.map(item => (
-            <Card
-              key={item.id}
-              className="p-5 dark:bg-slate-800 hover:shadow-card-hover transition-shadow"
-            >
-              <div className="flex items-center gap-4">
-                {/* Client avatar */}
-                <div className="w-11 h-11 rounded-full bg-gold/90 text-white text-sm font-bold flex items-center justify-center flex-shrink-0 shadow-sm">
-                  {getInitials(item.clientName)}
-                </div>
-
-                {/* Main info */}
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-dark-text dark:text-slate-100 leading-tight truncate">
-                    {item.documentTitle}
-                  </p>
-                  <div className="flex items-center gap-2 mt-1 flex-wrap">
-                    <span className="text-sm text-muted-text dark:text-slate-400">{item.clientName}</span>
-                    <span className="text-muted-text dark:text-slate-600">·</span>
-                    <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-surface-gray dark:bg-slate-700 text-dark-text dark:text-slate-300">
-                      {item.documentType}
-                    </span>
+      {/* Document Cards */}
+      <div className="space-y-3">
+        {filtered.length === 0 ? (
+          <div className="text-center py-16">
+            <div className="text-4xl mb-3">🎉</div>
+            <p className="font-semibold text-dark-text dark:text-slate-200 font-sans">Queue is clear!</p>
+            <p className="text-sm text-muted-text dark:text-slate-400 font-sans mt-1">
+              No {filter !== 'all' ? filter : ''} documents pending review
+            </p>
+          </div>
+        ) : (
+          filtered.map(doc => {
+            const priority = getPriority(doc.created_at);
+            return (
+              <Card
+                key={doc.id}
+                className="p-5 dark:bg-slate-800 hover:border-blue-brand/40 hover:shadow-card-hover
+                  transition-all cursor-pointer group"
+                onClick={() => navigate(`/lawyer/review/${doc.id}`)}
+              >
+                <div className="flex items-start gap-4">
+                  {/* Client Avatar */}
+                  <div className="w-10 h-10 rounded-full bg-gold flex items-center
+                    justify-center text-white text-sm font-bold flex-shrink-0">
+                    {doc.client?.avatar_initials ?? '?'}
                   </div>
-                </div>
 
-                {/* Right side: time + priority + button */}
-                <div className="flex flex-col items-end gap-2 flex-shrink-0">
-                  <span className="text-xs text-muted-text dark:text-slate-400 whitespace-nowrap">
-                    Received {item.receivedAt}
-                  </span>
-                  <div className="flex items-center gap-2">
-                    {getPriorityBadge(item.priority)}
-                    <Button
-                      id={`open-editor-${item.documentId}`}
-                      variant="primary"
-                      size="sm"
-                      onClick={() => navigate(`/lawyer/review/${item.documentId}`)}
+                  {/* Main Info */}
+                  <div className="flex-1 min-w-0">
+                    <div className="flex items-start justify-between gap-3">
+                      <div>
+                        <h3 className="text-sm font-bold text-dark-text dark:text-slate-100 font-sans">
+                          {doc.title}
+                        </h3>
+                        <p className="text-xs text-muted-text dark:text-slate-400 font-sans mt-0.5">
+                          Client: {doc.client?.full_name ?? 'Unknown'} •{' '}
+                          {doc.type}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 flex-shrink-0">
+                        <span
+                          className={`text-xs font-bold px-2 py-0.5 rounded-full
+                            font-sans ${priorityStyles[priority]}`}
+                        >
+                          {priority.toUpperCase()}
+                        </span>
+                      </div>
+                    </div>
+
+                    {/* Meta Row */}
+                    <div className="flex items-center gap-4 mt-3">
+                      <span className="flex items-center gap-1 text-xs text-muted-text dark:text-slate-400 font-sans">
+                        <Clock size={11} />
+                        Submitted {timeAgo(doc.created_at)}
+                      </span>
+                      <span className="text-xs text-muted-text dark:text-slate-400 font-sans">
+                        v{doc.version}
+                      </span>
+                      {doc.district && (
+                        <span className="text-xs text-muted-text dark:text-slate-400 font-sans">
+                          {doc.district} Court
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Actions */}
+                  <div className="flex gap-2 flex-shrink-0">
+                    <button
+                      className="px-3 py-1.5 border border-border dark:border-slate-600 rounded-lg text-xs
+                        font-semibold text-muted-text dark:text-slate-400 hover:bg-surface-gray dark:hover:bg-slate-700 font-sans
+                        transition-colors"
+                      onClick={e => {
+                        e.stopPropagation();
+                        // skip — move to bottom of queue
+                        setQueue(prev => {
+                          const rest = prev.filter(d => d.id !== doc.id);
+                          return [...rest, doc];
+                        });
+                      }}
                     >
-                      Open in Editor →
-                    </Button>
+                      Skip
+                    </button>
+                    <button
+                      className="px-3 py-1.5 bg-navy text-white rounded-lg text-xs
+                        font-semibold font-sans hover:bg-blue-brand transition-colors
+                        flex items-center gap-1.5"
+                      onClick={e => {
+                        e.stopPropagation();
+                        navigate(`/lawyer/review/${doc.id}`);
+                      }}
+                    >
+                      Review <ArrowRight size={12} />
+                    </button>
                   </div>
                 </div>
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
+              </Card>
+            );
+          })
+        )}
+      </div>
     </div>
   );
 };

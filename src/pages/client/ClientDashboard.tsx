@@ -10,10 +10,29 @@ import Card from '../../components/ui/Card';
 import { getStatusBadge } from '../../components/ui/Badge';
 import Button from '../../components/ui/Button';
 import Skeleton from '../../components/ui/Skeleton';
-import { mockDocuments, mockActivityData, mockNotifications, mockActiveCases, mockHearings } from '../../data/mockData';
+import { mockActivityData } from '../../data/mockData';
 import { useApp } from '../../context/AppContext';
-import useSimulatedLoading from '../../hooks/useSimulatedLoading';
 import { OnboardingModal } from '../../components/OnboardingModal';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../context/AuthContext';
+
+const statusDbToUI: Record<string, string> = {
+  draft: 'Draft',
+  under_review: 'Under Review',
+  finalized: 'Finalized',
+  revision_needed: 'Revision Needed',
+  'Draft': 'Draft',
+  'Under Review': 'Under Review',
+  'Finalized': 'Finalized',
+  'Revision Needed': 'Revision Needed',
+};
+
+const notifIcons: Record<string, string> = {
+  success: '✅',
+  info: 'ℹ️',
+  warning: '⚠️',
+  error: '🚨',
+};
 
 // ─── Animated Stat Card ───────────────────────────────────────────────────────
 const StatCard: React.FC<{
@@ -62,9 +81,10 @@ const StatCard: React.FC<{
 const CASE_STAGES = ['Filed', 'Under Review', 'Hearing Scheduled', 'Judgment Pending', 'Resolved'] as const;
 type CaseStage = typeof CASE_STAGES[number];
 
-const CaseTimeline: React.FC<{ loading: boolean }> = ({ loading }) => {
-  const activeCase = mockActiveCases[0];
-  const currentIdx = CASE_STAGES.indexOf(activeCase.stage as CaseStage);
+const CaseTimeline: React.FC<{ activeCase: any; loading: boolean }> = ({ activeCase, loading }) => {
+  if (!activeCase && !loading) return null;
+
+  const currentIdx = activeCase && activeCase.stage ? CASE_STAGES.indexOf(activeCase.stage as CaseStage) : 0;
 
   return (
     <Card className="p-5 dark:bg-slate-800">
@@ -143,11 +163,11 @@ const CaseTimeline: React.FC<{ loading: boolean }> = ({ loading }) => {
 };
 
 // ─── Upcoming Hearings Widget ─────────────────────────────────────────────────
-const UpcomingHearings: React.FC<{ loading: boolean }> = ({ loading }) => {
+const UpcomingHearings: React.FC<{ hearings: any[]; loading: boolean }> = ({ hearings, loading }) => {
   const { addToast } = useApp();
-  const hearings = mockHearings.slice(0, 3);
 
   const formatDate = (dateStr: string) => {
+    if (!dateStr) return { month: '—', day: '—' };
     const d = new Date(dateStr);
     const month = d.toLocaleString('default', { month: 'short' }).toUpperCase();
     const day = d.getDate();
@@ -163,6 +183,8 @@ const UpcomingHearings: React.FC<{ loading: boolean }> = ({ loading }) => {
         <div className="space-y-3">
           {[1, 2, 3].map(i => <Skeleton key={i} height="3.5rem" rounded="xl" />)}
         </div>
+      ) : hearings.length === 0 ? (
+        <p className="text-xs text-muted-text dark:text-slate-400 py-2 italic text-center">No upcoming hearings scheduled.</p>
       ) : (
         <div className="space-y-3">
           {hearings.map(hearing => {
@@ -262,17 +284,17 @@ const AssignedLawyerCard: React.FC<{ loading: boolean }> = ({ loading }) => {
 };
 
 // ─── Document Status Summary ──────────────────────────────────────────────────
-const DocStatusSummary: React.FC<{ loading: boolean }> = ({ loading }) => {
-  const stats = [
-    { label: 'Total', value: 7, icon: <Layers size={16} className="text-blue-brand" />, border: 'border-blue-brand', bg: 'bg-light-blue dark:bg-slate-700' },
-    { label: 'Under Review', value: 2, icon: <Clock size={16} className="text-amber-500" />, border: 'border-amber-400', bg: 'bg-amber-50 dark:bg-slate-700' },
-    { label: 'Finalized', value: 4, icon: <FileCheck size={16} className="text-success" />, border: 'border-success', bg: 'bg-green-50 dark:bg-slate-700' },
-    { label: 'Draft', value: 1, icon: <FileEdit size={16} className="text-muted-text" />, border: 'border-slate-300 dark:border-slate-500', bg: 'bg-surface-gray dark:bg-slate-700' },
+const DocStatusSummary: React.FC<{ stats: any; loading: boolean }> = ({ stats, loading }) => {
+  const displayStats = [
+    { label: 'Total', value: stats.total, icon: <Layers size={16} className="text-blue-brand" />, border: 'border-blue-brand', bg: 'bg-light-blue dark:bg-slate-700' },
+    { label: 'Under Review', value: stats.underReview, icon: <Clock size={16} className="text-amber-500" />, border: 'border-amber-400', bg: 'bg-amber-50 dark:bg-slate-700' },
+    { label: 'Finalized', value: stats.finalized, icon: <FileCheck size={16} className="text-success" />, border: 'border-success', bg: 'bg-green-50 dark:bg-slate-700' },
+    { label: 'Draft', value: stats.draft, icon: <FileEdit size={16} className="text-muted-text" />, border: 'border-slate-300 dark:border-slate-500', bg: 'bg-surface-gray dark:bg-slate-700' },
   ];
 
   return (
     <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-      {stats.map(s => (
+      {displayStats.map(s => (
         <div
           key={s.label}
           className={`p-4 rounded-xl border-l-4 ${s.border} ${s.bg} flex flex-col gap-1`}
@@ -291,34 +313,165 @@ const DocStatusSummary: React.FC<{ loading: boolean }> = ({ loading }) => {
   );
 };
 
+// ─── Live Data Fetching Hook ──────────────────────────────────────────────────
+const useClientDashboardData = (userId: string) => {
+  const [documents, setDocuments] = useState<any[]>([]);
+  const [notifications, setNotifications] = useState<any[]>([]);
+  const [activeCase, setActiveCase] = useState<any>(null);
+  const [hearings, setHearings] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchAll = async () => {
+      setLoading(true);
+
+      const [docsRes, notifsRes, caseRes] = await Promise.all([
+        supabase
+          .from('documents')
+          .select('*')
+          .eq('client_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(10),
+
+        supabase
+          .from('notifications')
+          .select('*')
+          .eq('user_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(6),
+
+        supabase
+          .from('cases')
+          .select('*')
+          .eq('client_id', userId)
+          .order('created_at', { ascending: false })
+          .limit(1),
+      ]);
+
+      // Map documents
+      const docs = (docsRes.data ?? []).map((doc: any) => ({
+        id: doc.id,
+        title: doc.title,
+        type: doc.type,
+        status: statusDbToUI[doc.status] || doc.status,
+        createdAt: doc.created_at ? new Date(doc.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '',
+        lawyerName: doc.lawyer_name || '',
+      }));
+      setDocuments(docs);
+
+      // Map notifications
+      const notifs = (notifsRes.data ?? []).map((n: any) => ({
+        id: n.id,
+        text: n.text || n.message || '',
+        type: n.type || 'info',
+        timestamp: n.created_at ? new Date(n.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : '',
+        read: n.read ?? false,
+        icon: notifIcons[n.type] || 'ℹ️',
+      }));
+      setNotifications(notifs);
+
+      // Map active case
+      const firstCase = caseRes.data && caseRes.data.length > 0 ? caseRes.data[0] : null;
+      const mappedCase = firstCase ? {
+        id: firstCase.id,
+        caseNumber: firstCase.case_number || 'N/A',
+        court: firstCase.court_name || firstCase.court || 'Court Room',
+        nextHearing: firstCase.next_hearing ? new Date(firstCase.next_hearing).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : 'None',
+        stage: firstCase.stage || 'Filed',
+      } : null;
+      setActiveCase(mappedCase);
+
+      // Fetch hearings if active case exists
+      if (firstCase) {
+        const { data: hearingData } = await supabase
+          .from('hearings')
+          .select('*')
+          .eq('case_id', firstCase.id)
+          .gte('date', new Date().toISOString().split('T')[0])
+          .order('date', { ascending: true })
+          .limit(3);
+
+        const mappedHearings = (hearingData ?? []).map((h: any) => ({
+          id: h.id,
+          date: h.date,
+          caseTitle: h.case_title || h.caseTitle || firstCase.title || 'Hearing Case',
+          court: h.court_name || h.court || firstCase.court_name || 'Court Room',
+        }));
+        setHearings(mappedHearings);
+      }
+
+      setLoading(false);
+    };
+
+    if (userId) fetchAll();
+  }, [userId]);
+
+  // Real-time: listen for new notifications
+  useEffect(() => {
+    if (!userId) return;
+    const channel = supabase
+      .channel('client-notifications')
+      .on(
+        'postgres_changes',
+        {
+          event: 'INSERT',
+          schema: 'public',
+          table: 'notifications',
+          filter: `user_id=eq.${userId}`,
+        },
+        (payload) => {
+          const n = payload.new;
+          const newNotif = {
+            id: n.id,
+            text: n.text || n.message || '',
+            type: n.type || 'info',
+            timestamp: n.created_at ? new Date(n.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }) : 'Just now',
+            read: n.read ?? false,
+            icon: notifIcons[n.type] || 'ℹ️',
+          };
+          setNotifications(prev => [newNotif, ...prev.slice(0, 5)]);
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [userId]);
+
+  return { documents, notifications, activeCase, hearings, loading };
+};
+
 // ─── Main Component ───────────────────────────────────────────────────────────
 const ClientDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { isLoading, triggerLoad } = useSimulatedLoading(1000);
+  const { user } = useAuth();
+  const { documents, notifications, activeCase, hearings, loading } = useClientDashboardData(user!.id);
 
-  useEffect(() => {
-    triggerLoad();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
-  const recentDocs = mockDocuments.slice(0, 6);
+  // Compute stats from live data
+  const stats = {
+    total: documents.length,
+    underReview: documents.filter(d => d.status === 'Under Review' || d.status === 'under_review').length,
+    finalized: documents.filter(d => d.status === 'Finalized' || d.status === 'finalized').length,
+    pending: documents.filter(d => d.status === 'Revision Needed' || d.status === 'revision_needed').length,
+    draft: documents.filter(d => d.status === 'Draft' || d.status === 'draft').length,
+  };
 
   return (
     <div className="space-y-6">
       <OnboardingModal />
+
       {/* ── Stat Cards Row ── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        <StatCard label="Documents Created" value={7} icon={<FileText size={18} className="text-blue-brand" />} borderColor="border-blue-brand" trend="+2 this month" loading={isLoading} />
-        <StatCard label="Under Review" value={2} icon={<Clock size={18} className="text-amber-500" />} borderColor="border-amber-400" loading={isLoading} />
-        <StatCard label="Finalized" value={4} icon={<CheckCircle size={18} className="text-success" />} borderColor="border-success" loading={isLoading} />
-        <StatCard label="Pending Action" value={1} icon={<AlertTriangle size={18} className="text-risk" />} borderColor="border-risk" loading={isLoading} />
+        <StatCard label="Documents Created" value={stats.total} icon={<FileText size={18} className="text-blue-brand" />} borderColor="border-blue-brand" trend="+2 this month" loading={loading} />
+        <StatCard label="Under Review" value={stats.underReview} icon={<Clock size={18} className="text-amber-500" />} borderColor="border-amber-400" loading={loading} />
+        <StatCard label="Finalized" value={stats.finalized} icon={<CheckCircle size={18} className="text-success" />} borderColor="border-success" loading={loading} />
+        <StatCard label="Pending Action" value={stats.pending} icon={<AlertTriangle size={18} className="text-risk" />} borderColor="border-risk" loading={loading} />
       </div>
 
       {/* ── Document Status Summary ── */}
-      <DocStatusSummary loading={isLoading} />
+      <DocStatusSummary stats={stats} loading={loading} />
 
       {/* ── Case Timeline ── */}
-      <CaseTimeline loading={isLoading} />
+      <CaseTimeline activeCase={activeCase} loading={loading} />
 
       {/* ── Main 3-col Grid ── */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -344,41 +497,55 @@ const ClientDashboard: React.FC = () => {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/50 dark:divide-slate-700">
-                  {recentDocs.map(doc => (
-                    <tr key={doc.id} className="hover:bg-surface-gray/50 dark:hover:bg-slate-700/40 transition-colors">
-                      <td className="px-4 py-3 text-sm font-medium text-dark-text dark:text-slate-200 max-w-[160px] truncate">
-                        {doc.title}
-                      </td>
-                      <td className="px-4 py-3 text-xs text-muted-text dark:text-slate-400">{doc.type}</td>
-                      <td className="px-4 py-3">{getStatusBadge(doc.status)}</td>
-                      <td className="px-4 py-3 text-xs text-muted-text dark:text-slate-400">{doc.createdAt}</td>
-                      <td className="px-4 py-3 text-xs text-muted-text dark:text-slate-400">
-                        {doc.lawyerName || <span className="italic text-muted-text/60">Not Assigned</span>}
-                      </td>
-                      <td className="px-4 py-3">
-                        <Button
-                          variant="ghost" size="sm"
-                          onClick={() => navigate(`/client/documents/${doc.id}`)}
-                          className="text-blue-brand hover:bg-light-blue"
-                        >
-                          {doc.status === 'Draft' ? 'Continue' : <><Eye size={14} /> View</>}
-                        </Button>
+                  {loading ? (
+                    Array.from({ length: 3 }).map((_, i) => (
+                      <tr key={i}>
+                        <td colSpan={6} className="px-4 py-3"><Skeleton height="1.5rem" /></td>
+                      </tr>
+                    ))
+                  ) : documents.length === 0 ? (
+                    <tr>
+                      <td colSpan={6} className="px-4 py-8 text-center text-sm text-muted-text italic">
+                        No documents created yet.
                       </td>
                     </tr>
-                  ))}
+                  ) : (
+                    documents.slice(0, 6).map(doc => (
+                      <tr key={doc.id} className="hover:bg-surface-gray/50 dark:hover:bg-slate-700/40 transition-colors">
+                        <td className="px-4 py-3 text-sm font-medium text-dark-text dark:text-slate-200 max-w-[160px] truncate">
+                          {doc.title}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-muted-text dark:text-slate-400">{doc.type}</td>
+                        <td className="px-4 py-3">{getStatusBadge(doc.status)}</td>
+                        <td className="px-4 py-3 text-xs text-muted-text dark:text-slate-400">{doc.createdAt}</td>
+                        <td className="px-4 py-3 text-xs text-muted-text dark:text-slate-400">
+                          {doc.lawyerName || <span className="italic text-muted-text/60">Not Assigned</span>}
+                        </td>
+                        <td className="px-4 py-3">
+                          <Button
+                            variant="ghost" size="sm"
+                            onClick={() => navigate(`/client/documents/${doc.id}`)}
+                            className="text-blue-brand hover:bg-light-blue"
+                          >
+                            {doc.status === 'Draft' ? 'Continue' : <><Eye size={14} /> View</>}
+                          </Button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
           </Card>
 
           {/* Upcoming Hearings in left column below table */}
-          <UpcomingHearings loading={isLoading} />
+          <UpcomingHearings hearings={hearings} loading={loading} />
         </div>
 
         {/* Right Column */}
         <div className="space-y-4">
           {/* Assigned Lawyer */}
-          <AssignedLawyerCard loading={isLoading} />
+          <AssignedLawyerCard loading={loading} />
 
           {/* Quick Actions */}
           <Card className="p-5 dark:bg-slate-800">
@@ -409,16 +576,24 @@ const ClientDashboard: React.FC = () => {
           <Card className="p-5 dark:bg-slate-800">
             <h3 className="font-serif text-base font-semibold text-dark-text dark:text-slate-100 mb-4">Notifications</h3>
             <div className="space-y-3">
-              {mockNotifications.slice(0, 4).map(notif => (
-                <div key={notif.id} className="flex gap-3 items-start">
-                  <span className="text-base flex-shrink-0 mt-0.5">{notif.icon}</span>
-                  <div className="min-w-0">
-                    <p className="text-xs text-dark-text dark:text-slate-200 leading-snug">{notif.text}</p>
-                    <p className="text-xs text-muted-text dark:text-slate-500 mt-0.5">{notif.timestamp}</p>
+              {loading ? (
+                Array.from({ length: 3 }).map((_, i) => (
+                  <Skeleton key={i} height="2rem" />
+                ))
+              ) : notifications.length === 0 ? (
+                <p className="text-xs text-muted-text dark:text-slate-400 py-2 italic text-center">No new notifications.</p>
+              ) : (
+                notifications.map(notif => (
+                  <div key={notif.id} className="flex gap-3 items-start">
+                    <span className="text-base flex-shrink-0 mt-0.5">{notif.icon}</span>
+                    <div className="min-w-0">
+                      <p className="text-xs text-dark-text dark:text-slate-200 leading-snug">{notif.text}</p>
+                      <p className="text-xs text-muted-text dark:text-slate-500 mt-0.5">{notif.timestamp}</p>
+                    </div>
+                    {!notif.read && <div className="w-2 h-2 rounded-full bg-blue-brand flex-shrink-0 mt-1" />}
                   </div>
-                  {!notif.read && <div className="w-2 h-2 rounded-full bg-blue-brand flex-shrink-0 mt-1" />}
-                </div>
-              ))}
+                ))
+              )}
             </div>
           </Card>
         </div>

@@ -9,6 +9,7 @@ import Modal from '../../components/ui/Modal';
 import Skeleton from '../../components/ui/Skeleton';
 import { mockCases } from '../../data/mockData';
 import { useApp } from '../../context/AppContext';
+import { useSavedCases } from '../../hooks/useSavedCases';
 import { CaseResult } from '../../types';
 
 // ─── Colour maps ──────────────────────────────────────────────────────────────
@@ -23,11 +24,11 @@ const courtColors: Record<string, string> = {
 };
 
 const domainColors: Record<string, string> = {
-  Criminal: 'bg-red-100 text-risk',
-  Civil: 'bg-blue-100 text-blue-brand',
-  Family: 'bg-pink-100 text-pink-700',
-  Commercial: 'bg-amber-100 text-amber-700',
-  Constitutional: 'bg-purple-100 text-purple-700',
+  Criminal: 'bg-red-100 text-risk dark:bg-red-900/40 dark:text-red-300',
+  Civil: 'bg-blue-100 text-blue-brand dark:bg-blue-900/40 dark:text-blue-300',
+  Family: 'bg-pink-100 text-pink-700 dark:bg-pink-900/40 dark:text-pink-300',
+  Commercial: 'bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300',
+  Constitutional: 'bg-purple-100 text-purple-700 dark:bg-purple-900/40 dark:text-purple-300',
 };
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -75,7 +76,7 @@ const RELATED_CASES = [
 // ─── Skeleton card ────────────────────────────────────────────────────────────
 
 const SearchSkeletonCard: React.FC = () => (
-  <Card className="p-5 space-y-3">
+  <Card className="p-5 space-y-3 dark:bg-slate-800">
     <div className="flex gap-2">
       <Skeleton height="1.25rem" width="6rem" rounded="md" />
       <Skeleton height="1.25rem" width="4rem" rounded="md" />
@@ -93,7 +94,8 @@ const SearchSkeletonCard: React.FC = () => (
 // ─── Main component ───────────────────────────────────────────────────────────
 
 const CaseLawSearch: React.FC = () => {
-  const { savedCases, toggleSavedCase, addToast } = useApp();
+  const { addToast } = useApp();
+  const { savedCases, saveCase, unsaveCase, isSaved } = useSavedCases();
 
   const [query, setQuery] = useState('bail conditions repeat offender');
   const [searched, setSearched] = useState(true);
@@ -140,6 +142,26 @@ const CaseLawSearch: React.FC = () => {
       setSearched(true);
     }, 1500);
   }
+
+  const handleToggleSave = async (c: CaseResult) => {
+    if (isSaved(c.citation)) {
+      const saved = savedCases.find(sc => sc.citation === c.citation);
+      if (saved) {
+        await unsaveCase(saved.id);
+        addToast('Removed from library', 'success');
+      }
+    } else {
+      await saveCase({
+        case_title: c.caseName,
+        court: c.court,
+        year: c.year,
+        citation: c.citation,
+        domain: c.domain,
+        summary: c.summary,
+      });
+      addToast('Saved to library', 'success');
+    }
+  };
 
   const filtered = mockCases.filter(c => {
     if (court !== 'All Courts' && c.court !== court) return false;
@@ -220,29 +242,29 @@ const CaseLawSearch: React.FC = () => {
 
         {/* Filters sidebar — hidden on mobile unless toggled */}
         <aside className={`w-52 flex-shrink-0 ${filtersOpen ? 'block' : 'hidden md:block'}`}>
-          <Card className="p-4 sticky top-20 space-y-5">
+          <Card className="p-4 sticky top-20 space-y-5 dark:bg-slate-800">
             <div className="flex items-center justify-between">
-              <p className="font-semibold text-sm text-dark-text">Filters</p>
-              <button onClick={clearFilters} className="text-xs text-blue-brand hover:underline">Clear All</button>
+              <p className="font-semibold text-sm text-dark-text dark:text-slate-100">Filters</p>
+              <button onClick={clearFilters} className="text-xs text-blue-brand dark:text-blue-400 hover:underline">Clear All</button>
             </div>
 
             {/* Year range */}
             <div>
-              <p className="text-xs font-medium text-muted-text mb-2 uppercase tracking-wide">Year Range</p>
+              <p className="text-xs font-medium text-muted-text dark:text-slate-400 mb-2 uppercase tracking-wide">Year Range</p>
               <div className="flex gap-2 items-center">
                 <input
                   type="number"
                   value={yearFrom}
                   onChange={e => setYearFrom(Number(e.target.value))}
-                  className="w-full px-2 py-1 text-xs border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-brand/30"
+                  className="w-full px-2 py-1 text-xs border border-border dark:border-slate-700 bg-white dark:bg-slate-900 text-dark-text dark:text-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-brand/30"
                   placeholder="From"
                 />
-                <span className="text-muted-text text-xs">–</span>
+                <span className="text-muted-text dark:text-slate-450 text-xs">–</span>
                 <input
                   type="number"
                   value={yearTo}
                   onChange={e => setYearTo(Number(e.target.value))}
-                  className="w-full px-2 py-1 text-xs border border-border rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-brand/30"
+                  className="w-full px-2 py-1 text-xs border border-border dark:border-slate-700 bg-white dark:bg-slate-900 text-dark-text dark:text-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-brand/30"
                   placeholder="To"
                 />
               </div>
@@ -250,7 +272,7 @@ const CaseLawSearch: React.FC = () => {
 
             {/* Bench type */}
             <div>
-              <p className="text-xs font-medium text-muted-text mb-2 uppercase tracking-wide">Bench Type</p>
+              <p className="text-xs font-medium text-muted-text dark:text-slate-400 mb-2 uppercase tracking-wide">Bench Type</p>
               <div className="space-y-1.5">
                 {Object.keys(bench).map(b => (
                   <label key={b} className="flex items-center gap-2 cursor-pointer">
@@ -260,7 +282,7 @@ const CaseLawSearch: React.FC = () => {
                       onChange={e => setBench(prev => ({ ...prev, [b]: e.target.checked }))}
                       className="accent-navy w-3.5 h-3.5"
                     />
-                    <span className="text-xs text-dark-text">{b}</span>
+                    <span className="text-xs text-dark-text dark:text-slate-350">{b}</span>
                   </label>
                 ))}
               </div>
@@ -268,7 +290,7 @@ const CaseLawSearch: React.FC = () => {
 
             {/* Outcome filter */}
             <div>
-              <p className="text-xs font-medium text-muted-text mb-2 uppercase tracking-wide">Outcome</p>
+              <p className="text-xs font-medium text-muted-text dark:text-slate-400 mb-2 uppercase tracking-wide">Outcome</p>
               <div className="space-y-1.5">
                 {outcomes.map(o => (
                   <label key={o} className="flex items-center gap-2 cursor-pointer">
@@ -279,7 +301,7 @@ const CaseLawSearch: React.FC = () => {
                       onChange={() => setOutcome(o)}
                       className="accent-navy w-3.5 h-3.5"
                     />
-                    <span className="text-xs text-dark-text">{o}</span>
+                    <span className="text-xs text-dark-text dark:text-slate-350">{o}</span>
                   </label>
                 ))}
               </div>
@@ -287,7 +309,7 @@ const CaseLawSearch: React.FC = () => {
 
             <button
               onClick={clearFilters}
-              className="w-full py-1.5 text-xs text-muted-text border border-border rounded-xl hover:bg-surface-gray transition-colors"
+              className="w-full py-1.5 text-xs text-muted-text dark:text-slate-450 border border-border dark:border-slate-700 rounded-xl hover:bg-surface-gray dark:hover:bg-slate-900 transition-colors"
             >
               Clear Filters
             </button>
@@ -309,10 +331,10 @@ const CaseLawSearch: React.FC = () => {
           {searched && !loading && (
             <div>
               <div className="flex items-center justify-between mb-4">
-                <p className="text-sm text-muted-text">
-                  <span className="font-semibold text-dark-text">{filtered.length} cases</span> found for "{query}"
+                <p className="text-sm text-muted-text dark:text-slate-400">
+                  <span className="font-semibold text-dark-text dark:text-slate-200">{filtered.length} cases</span> found for "{query}"
                 </p>
-                <select className="text-xs border border-border rounded-lg px-2.5 py-1.5 text-muted-text bg-white outline-none">
+                <select className="text-xs border border-border dark:border-slate-750 rounded-lg px-2.5 py-1.5 text-muted-text dark:text-slate-400 bg-white dark:bg-slate-800 outline-none">
                   <option>Relevance</option>
                   <option>Date</option>
                   <option>Court Level</option>
@@ -321,28 +343,28 @@ const CaseLawSearch: React.FC = () => {
 
               <div className="space-y-4">
                 {filtered.map(c => (
-                  <Card key={c.id} className="p-5 hover:-translate-y-0.5 hover:shadow-card-hover transition-all duration-200">
+                  <Card key={c.id} className="p-5 dark:bg-slate-800 hover:-translate-y-0.5 hover:shadow-card-hover transition-all duration-200">
                     <div className="flex items-start justify-between gap-3 mb-2">
                       <div className="flex items-center gap-2 flex-wrap">
-                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-md ${courtColors[c.court] || 'bg-gray-100'}`}>
+                        <span className={`text-xs font-semibold px-2 py-0.5 rounded-md ${courtColors[c.court] || 'bg-gray-150 text-gray-700'}`}>
                           {c.court}
                         </span>
-                        <span className={`text-xs px-2 py-0.5 rounded-md ${domainColors[c.domain] || 'bg-gray-100 text-gray-600'}`}>
+                        <span className={`text-xs px-2 py-0.5 rounded-md ${domainColors[c.domain] || 'bg-gray-150 text-gray-700'}`}>
                           {c.domain}
                         </span>
-                        <span className="text-xs text-muted-text">{c.year}</span>
+                        <span className="text-xs text-muted-text dark:text-slate-400">{c.year}</span>
                       </div>
                       <button
-                        onClick={() => toggleSavedCase(c.id)}
-                        className={`flex-shrink-0 p-1.5 rounded-lg transition-colors ${savedCases.includes(c.id) ? 'text-risk bg-red-50' : 'text-muted-text hover:text-risk hover:bg-red-50'}`}
-                        aria-label={savedCases.includes(c.id) ? 'Unsave case' : 'Save case'}
+                        onClick={() => handleToggleSave(c)}
+                        className={`flex-shrink-0 p-1.5 rounded-lg transition-colors ${isSaved(c.citation) ? 'text-risk bg-red-50 dark:bg-red-950/20' : 'text-muted-text hover:text-risk hover:bg-red-50 dark:hover:bg-red-950/20'}`}
+                        aria-label={isSaved(c.citation) ? 'Unsave case' : 'Save case'}
                       >
-                        <Heart size={16} fill={savedCases.includes(c.id) ? 'currentColor' : 'none'} />
+                        <Heart size={16} fill={isSaved(c.citation) ? 'currentColor' : 'none'} />
                       </button>
                     </div>
 
                     <h3
-                      className="font-semibold text-dark-text text-sm mb-0.5 cursor-pointer hover:text-navy transition-colors"
+                      className="font-semibold text-dark-text dark:text-slate-100 text-sm mb-0.5 cursor-pointer hover:text-navy dark:hover:text-blue-300 transition-colors"
                       onClick={() => setSelectedCase(c)}
                       dangerouslySetInnerHTML={{ __html: highlightText(c.caseName, query) }}
                     />
@@ -352,16 +374,16 @@ const CaseLawSearch: React.FC = () => {
                       <p className="font-mono text-xs text-gold font-semibold">{c.citation}</p>
                       <button
                         onClick={() => copyToClipboard(c.citation)}
-                        className="p-0.5 text-muted-text hover:text-navy transition-colors"
+                        className="p-0.5 text-muted-text dark:text-slate-400 hover:text-navy dark:hover:text-blue-300 transition-colors"
                         title="Copy citation"
                       >
                         <Copy size={11} />
                       </button>
                     </div>
 
-                    <div className="border-l-2 border-light-blue pl-3 mb-3">
+                    <div className="border-l-2 border-light-blue dark:border-slate-700 pl-3 mb-3">
                       <p
-                        className="text-xs text-dark-text leading-relaxed"
+                        className="text-xs text-dark-text dark:text-slate-300 leading-relaxed"
                         dangerouslySetInnerHTML={{ __html: highlightText(c.summary, query) }}
                       />
                     </div>
@@ -369,12 +391,12 @@ const CaseLawSearch: React.FC = () => {
                     <div className="flex items-center justify-between">
                       <div className="flex gap-1.5 flex-wrap">
                         {c.keyPhrases.slice(0, 3).map(kp => (
-                          <span key={kp} className="text-[10px] bg-light-blue text-navy px-2 py-0.5 rounded-full">{kp}</span>
+                          <span key={kp} className="text-[10px] bg-light-blue dark:bg-slate-700 text-navy dark:text-blue-300 px-2 py-0.5 rounded-full">{kp}</span>
                         ))}
                       </div>
                       <button
                         onClick={() => setSelectedCase(c)}
-                        className="text-xs text-blue-brand hover:underline font-medium"
+                        className="text-xs text-blue-brand dark:text-blue-400 hover:underline font-medium"
                       >
                         View Full Case →
                       </button>
@@ -392,7 +414,7 @@ const CaseLawSearch: React.FC = () => {
         {selectedCase && (
           <div>
             <div className="flex gap-2 mb-4 flex-wrap items-center">
-              <span className={`text-xs font-semibold px-2 py-0.5 rounded-md ${courtColors[selectedCase.court] || 'bg-gray-100'}`}>
+              <span className={`text-xs font-semibold px-2 py-0.5 rounded-md ${courtColors[selectedCase.court] || 'bg-gray-100 text-gray-700'}`}>
                 {selectedCase.court}
               </span>
               {/* Citation with copy in modal */}
@@ -400,13 +422,13 @@ const CaseLawSearch: React.FC = () => {
                 <span className="font-mono text-sm text-gold font-semibold">{selectedCase.citation}</span>
                 <button
                   onClick={() => copyToClipboard(selectedCase.citation)}
-                  className="p-0.5 text-muted-text hover:text-navy transition-colors"
+                  className="p-0.5 text-muted-text dark:text-slate-400 hover:text-navy dark:hover:text-blue-300 transition-colors"
                   title="Copy citation"
                 >
                   <Copy size={13} />
                 </button>
               </div>
-              <span className="text-xs text-muted-text">{selectedCase.year}</span>
+              <span className="text-xs text-muted-text dark:text-slate-400">{selectedCase.year}</span>
             </div>
 
             {[
@@ -417,26 +439,26 @@ const CaseLawSearch: React.FC = () => {
               { label: 'Obiter Dicta', text: 'Courts should not mechanically deny bail based on the gravity of charge alone. Personal liberty guaranteed under Article 9 must be the primary consideration.' },
             ].map(s => (
               <div key={s.label} className="mb-4">
-                <h4 className="font-semibold text-xs text-muted-text uppercase tracking-wider mb-1">{s.label}</h4>
-                <p className="text-sm text-dark-text leading-relaxed">{s.text}</p>
+                <h4 className="font-semibold text-xs text-muted-text dark:text-slate-400 uppercase tracking-wider mb-1">{s.label}</h4>
+                <p className="text-sm text-dark-text dark:text-slate-200 leading-relaxed">{s.text}</p>
               </div>
             ))}
 
             {/* Related Cases */}
-            <div className="mt-6 pt-4 border-t border-border">
-              <h4 className="font-semibold text-xs text-muted-text uppercase tracking-wider mb-3">Related Cases</h4>
+            <div className="mt-6 pt-4 border-t border-border dark:border-slate-700">
+              <h4 className="font-semibold text-xs text-muted-text dark:text-slate-400 uppercase tracking-wider mb-3">Related Cases</h4>
               <div className="space-y-2">
                 {RELATED_CASES.map(rc => (
                   <div
                     key={rc.citation}
-                    className="flex items-center justify-between p-3 bg-surface-gray rounded-xl border border-border/50 cursor-pointer hover:border-light-blue transition-colors"
+                    className="flex items-center justify-between p-3 bg-surface-gray dark:bg-slate-900 rounded-xl border border-border/50 dark:border-slate-700/50 cursor-pointer hover:border-light-blue dark:hover:border-slate-750 transition-colors"
                     onClick={() => addToast('Loading related case...', 'info')}
                   >
                     <div>
-                      <p className="text-xs font-semibold text-dark-text">{rc.name}</p>
+                      <p className="text-xs font-semibold text-dark-text dark:text-slate-200">{rc.name}</p>
                       <p className="font-mono text-[10px] text-gold">{rc.citation}</p>
                     </div>
-                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md shrink-0 ml-2 ${courtColors[rc.court] || 'bg-gray-100'}`}>
+                    <span className={`text-[10px] font-semibold px-2 py-0.5 rounded-md shrink-0 ml-2 ${courtColors[rc.court] || 'bg-gray-100 text-gray-700'}`}>
                       {rc.court.includes('Supreme') ? 'SC' : 'HC'}
                     </span>
                   </div>

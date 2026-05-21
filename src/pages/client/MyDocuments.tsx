@@ -6,13 +6,24 @@ import Button from '../../components/ui/Button';
 import { getStatusBadge } from '../../components/ui/Badge';
 import { TableRowSkeleton } from '../../components/ui/Skeleton';
 import EmptyState from '../../components/ui/EmptyState';
-import { mockDocuments } from '../../data/mockData';
 import { DocumentType, DocumentStatus } from '../../types';
 import { useApp } from '../../context/AppContext';
-import useSimulatedLoading from '../../hooks/useSimulatedLoading';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../context/AuthContext';
 
 const ALL_TYPES: DocumentType[] = ['Wakalatnama', 'Petition', 'Affidavit', 'Bail Application', 'Business Agreement', 'Rental Agreement'];
 const ALL_STATUSES: DocumentStatus[] = ['Draft', 'Under Review', 'Finalized', 'Revision Needed'];
+
+const statusDbToUI: Record<string, string> = {
+  draft: 'Draft',
+  under_review: 'Under Review',
+  finalized: 'Finalized',
+  revision_needed: 'Revision Needed',
+  'Draft': 'Draft',
+  'Under Review': 'Under Review',
+  'Finalized': 'Finalized',
+  'Revision Needed': 'Revision Needed',
+};
 
 // ─── Version History Drawer ───────────────────────────────────────────────────
 interface DrawerProps {
@@ -74,7 +85,7 @@ const VersionHistoryDrawer: React.FC<DrawerProps> = ({ docTitle, onClose }) => {
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-bold text-dark-text dark:text-slate-100">v{v.n}</span>
                   <span
-                    className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full
+                     className={`text-[10px] font-semibold px-1.5 py-0.5 rounded-full
                       ${v.n === 3 ? 'bg-gold/20 text-gold' : 'bg-light-blue dark:bg-slate-600 text-navy dark:text-blue-300'}`}
                   >
                     {v.label}
@@ -130,7 +141,10 @@ const BulkToolbar: React.FC<BulkToolbarProps> = ({ count, onDelete, onClear }) =
 const MyDocuments: React.FC = () => {
   const navigate = useNavigate();
   const { addToast } = useApp();
-  const { isLoading, triggerLoad } = useSimulatedLoading(1000);
+  const { user } = useAuth();
+
+  const [documents, setDocuments] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const [activeTab, setActiveTab] = useState<'all' | DocumentStatus>('all');
   const [selectedTypes, setSelectedTypes] = useState<DocumentType[]>([]);
@@ -139,10 +153,65 @@ const MyDocuments: React.FC = () => {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [drawerDoc, setDrawerDoc] = useState<{ id: string; title: string } | null>(null);
 
+  const fetchDocs = useCallback(async () => {
+    if (!user) return;
+    setLoading(true);
+    const { data, error } = await supabase
+      .from('documents')
+      .select('*')
+      .eq('client_id', user.id)
+      .order('created_at', { ascending: false });
+
+    if (!error && data) {
+      const mapped = data.map((doc: any) => ({
+        id: doc.id,
+        title: doc.title,
+        type: doc.type,
+        status: statusDbToUI[doc.status] || doc.status,
+        createdAt: doc.created_at ? new Date(doc.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
+        updatedAt: doc.updated_at ? new Date(doc.updated_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
+        clientId: doc.client_id,
+        clientName: doc.client_name || '',
+        lawyerId: doc.lawyer_id,
+        lawyerName: doc.lawyer_name || '',
+        content: doc.content || '',
+      }));
+      setDocuments(mapped);
+    }
+    setLoading(false);
+  }, [user]);
+
   useEffect(() => {
-    triggerLoad();
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    fetchDocs();
+  }, [fetchDocs]);
+
+  const handleDelete = async (id: string) => {
+    const { error } = await supabase.from('documents').delete().eq('id', id);
+    if (!error) {
+      setDocuments(prev => prev.filter(d => d.id !== id));
+      setSelectedIds(prev => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+      addToast('Document deleted successfully', 'success');
+    } else {
+      addToast('Failed to delete document', 'error');
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    const count = selectedIds.size;
+    const ids = Array.from(selectedIds);
+    const { error } = await supabase.from('documents').delete().in('id', ids);
+    if (!error) {
+      setDocuments(prev => prev.filter(d => !selectedIds.has(d.id)));
+      setSelectedIds(new Set());
+      addToast(`${count} document(s) deleted`, 'success');
+    } else {
+      addToast('Failed to delete selected documents', 'error');
+    }
+  };
 
   const toggleFilter = <T extends string>(arr: T[], setter: (v: T[]) => void, val: T) => {
     setter(arr.includes(val) ? arr.filter(x => x !== val) : [...arr, val]);
@@ -155,7 +224,7 @@ const MyDocuments: React.FC = () => {
     setActiveTab('all');
   }, []);
 
-  const filtered = mockDocuments.filter(doc => {
+  const filtered = documents.filter(doc => {
     if (activeTab !== 'all' && doc.status !== activeTab) return false;
     if (selectedTypes.length && !selectedTypes.includes(doc.type)) return false;
     if (selectedStatuses.length && !selectedStatuses.includes(doc.status)) return false;
@@ -164,11 +233,11 @@ const MyDocuments: React.FC = () => {
   });
 
   const tabCounts = {
-    all: mockDocuments.length,
-    Draft: mockDocuments.filter(d => d.status === 'Draft').length,
-    'Under Review': mockDocuments.filter(d => d.status === 'Under Review').length,
-    Finalized: mockDocuments.filter(d => d.status === 'Finalized').length,
-    'Revision Needed': mockDocuments.filter(d => d.status === 'Revision Needed').length,
+    all: documents.length,
+    Draft: documents.filter(d => d.status === 'Draft').length,
+    'Under Review': documents.filter(d => d.status === 'Under Review').length,
+    Finalized: documents.filter(d => d.status === 'Finalized').length,
+    'Revision Needed': documents.filter(d => d.status === 'Revision Needed').length,
   };
 
   const toggleSelect = (id: string) => {
@@ -186,12 +255,6 @@ const MyDocuments: React.FC = () => {
     } else {
       setSelectedIds(new Set(filtered.map(d => d.id)));
     }
-  };
-
-  const handleBulkDelete = () => {
-    const count = selectedIds.size;
-    setSelectedIds(new Set());
-    addToast(`${count} document(s) deleted`, 'success');
   };
 
   const cbCls = 'flex items-center gap-2 cursor-pointer text-sm text-dark-text dark:text-slate-300 hover:text-navy dark:hover:text-blue-400 select-none';
@@ -307,7 +370,7 @@ const MyDocuments: React.FC = () => {
                 <tr className="bg-surface-gray dark:bg-slate-700/60 text-xs text-muted-text dark:text-slate-400 uppercase tracking-wider">
                   {/* Select-all checkbox */}
                   <th className="px-4 py-3 text-left w-8">
-                    {!isLoading && filtered.length > 0 && (
+                    {!loading && filtered.length > 0 && (
                       <input
                         type="checkbox"
                         checked={selectedIds.size === filtered.length && filtered.length > 0}
@@ -326,7 +389,7 @@ const MyDocuments: React.FC = () => {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/50 dark:divide-slate-700">
-                {isLoading ? (
+                {loading ? (
                   /* Skeleton rows */
                   Array.from({ length: 5 }).map((_, i) => (
                     <TableRowSkeleton key={i} cols={7} />
@@ -335,7 +398,7 @@ const MyDocuments: React.FC = () => {
                   <tr>
                     <td colSpan={7}>
                       <EmptyState
-                        title="No documents found"
+                         title="No documents found"
                         subtitle="Try adjusting your search or filters"
                         ctaLabel="Clear Filters"
                         onCta={clearFilters}
@@ -408,9 +471,7 @@ const MyDocuments: React.FC = () => {
                             </button>
                             {/* Delete */}
                             <button
-                              onClick={() => {
-                                addToast('1 document(s) deleted', 'success');
-                              }}
+                              onClick={() => handleDelete(doc.id)}
                               className="p-1.5 hover:bg-red-50 dark:hover:bg-red-900/30 rounded-lg text-muted-text hover:text-risk transition-colors"
                               title="Delete"
                             >
@@ -427,10 +488,10 @@ const MyDocuments: React.FC = () => {
           </div>
 
           {/* Footer */}
-          {!isLoading && (
+          {!loading && (
             <div className="px-4 py-3 border-t border-border dark:border-slate-700 bg-surface-gray/50 dark:bg-slate-700/30 flex items-center justify-between">
               <p className="text-xs text-muted-text dark:text-slate-400">
-                Showing {filtered.length} of {mockDocuments.length} documents
+                Showing {filtered.length} of {documents.length} documents
                 {selectedIds.size > 0 && (
                   <span className="ml-2 text-navy dark:text-blue-400 font-medium">· {selectedIds.size} selected</span>
                 )}

@@ -1,464 +1,471 @@
-import React, { useState, useEffect, useRef } from 'react';
-import {
-  Bold, Italic, Underline, MessageSquare, Lightbulb, Search,
-  BookMarked, CheckCircle, AlertTriangle, Info, Clock, History,
-} from 'lucide-react';
-import Card from '../../components/ui/Card';
-import Badge from '../../components/ui/Badge';
-import Button from '../../components/ui/Button';
-import Modal from '../../components/ui/Modal';
-import { BAIL_APPLICATION_CONTENT } from '../../data/mockData';
-import { useApp } from '../../context/AppContext';
+import React, { useEffect, useState, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
+import { supabase } from '../../lib/supabase';
+import { useAuth } from '../../context/AuthContext';
+import { Check, Save, ThumbsUp, Send } from 'lucide-react';
 
-// ─── Constants ──────────────────────────────────────────────────────────────
+type EditorTab = 'suggestions' | 'precedents' | 'comments';
+type SaveState = 'idle' | 'saving' | 'saved';
 
-const AI_SUGGESTIONS = [
+const SUGGESTIONS = [
   {
-    type: 'warning',
-    icon: <AlertTriangle size={14} className="text-amber-500" />,
-    text: 'The grounds of medical condition requires supporting documentation (medical certificate). Consider adding a clause referencing Exhibit-A.',
+    title: 'Strengthen bail grounds',
+    body: 'Reference CrPC Section 437(1)(i) regarding bailable offences to strengthen the primary argument.'
   },
   {
-    type: 'info',
-    icon: <Info size={14} className="text-blue-brand" />,
-    text: 'Citing PLD 2021 SC 445 would strengthen the bail grounds for first-time offenders. This Supreme Court ruling is directly on point.',
+    title: 'Add medical certificate reference',
+    body: 'Clause 2(b) mentions medical condition but lacks supporting document reference. Add Exhibit A notation.'
   },
   {
-    type: 'info',
-    icon: <Info size={14} className="text-blue-brand" />,
-    text: 'The prayer clause should explicitly mention Article 9 of the Constitution as a constitutional grounding for bail entitlement.',
+    title: 'Surety declaration missing',
+    body: 'Add the financial standing declaration required under Bombay HC practice directions 2022.'
   },
 ];
-
-const PRECEDENTS = [
-  { name: 'Akhtar v. State', citation: 'PLD 2021 SC 445', summary: 'Bail is the rule and jail is the exception. Denial of bail violates Article 10-A fair trial rights.' },
-  { name: 'Re: Bail Conditions', citation: '2019 SCMR 1244', summary: 'Medical grounds are sufficient cause for bail where the accused suffers from ailment requiring specialized care.' },
-  { name: 'Muhammad Ali v. State', citation: 'PLJ 2020 Lah 88', summary: 'Sole breadwinner status and no prior criminal record weighs heavily in favor of bail.' },
-];
-
-const THREADS = [
-  { author: 'Adnan Raza (You)', text: 'Consider citing 2019 SCMR 1244 here to strengthen the medical grounds argument.', time: '2h ago' },
-  { author: 'AI Suggestion', text: 'Surety details are incomplete — surety CNIC and relationship have not been provided in the petition.', time: '1h ago' },
-];
-
-const VERSION_HISTORY = [
-  { v: 3, date: 'Today', label: 'Lawyer edits' },
-  { v: 2, date: 'Yesterday', label: 'Client revised' },
-  { v: 1, date: '3 days ago', label: 'AI generated' },
-];
-
-// ─── Word Count Helpers ───────────────────────────────────────────────────────
-
-function calcWordCount(text: string) {
-  return Math.round(text.length / 5);
-}
-function calcReadingTime(words: number) {
-  return Math.max(1, Math.round(words / 200));
-}
-
-// ─── Inline Comment Popover ───────────────────────────────────────────────────
-
-interface CommentPopoverProps {
-  author: string;
-  time: string;
-  comment: string;
-  onClose: () => void;
-}
-
-const CommentPopover: React.FC<CommentPopoverProps> = ({ author, time, comment, onClose }) => {
-  const [reply, setReply] = useState('');
-  const { addToast } = useApp();
-
-  return (
-    <div
-      className="absolute z-50 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-border dark:border-slate-700 p-3 w-64 top-full mt-1 left-0"
-      onClick={e => e.stopPropagation()}
-    >
-      <div className="flex items-center justify-between mb-1">
-        <span className="text-xs font-semibold text-navy dark:text-gold">{author}</span>
-        <span className="text-[10px] text-muted-text dark:text-slate-400">{time}</span>
-      </div>
-      <p className="text-xs text-dark-text dark:text-slate-200 leading-relaxed mb-2">{comment}</p>
-      <div className="flex gap-1">
-        <textarea
-          value={reply}
-          onChange={e => setReply(e.target.value)}
-          rows={2}
-          placeholder="Add a reply..."
-          className="flex-1 px-2 py-1 text-xs border border-border dark:border-slate-700 bg-white dark:bg-slate-900 text-dark-text dark:text-slate-100 rounded-lg resize-none focus:outline-none focus:ring-1 focus:ring-blue-brand/30"
-        />
-        <button
-          onClick={() => {
-            addToast('Reply sent', 'success');
-            setReply('');
-            onClose();
-          }}
-          className="self-end px-2 py-1 bg-navy dark:bg-blue-brand text-white text-xs rounded-lg hover:bg-blue-brand dark:hover:bg-blue-600 transition-colors"
-        >
-          Send
-        </button>
-      </div>
-    </div>
-  );
-};
-
-// ─── Component ────────────────────────────────────────────────────────────────
 
 const DocumentEditor: React.FC = () => {
-  const { addToast } = useApp();
+  const { id } = useParams<{ id: string }>();
+  const navigate = useNavigate();
+  const { user } = useAuth();
 
-  const [activeTab, setActiveTab] = useState<'suggestions' | 'precedents' | 'comments'>('suggestions');
-  const [finalizeModal, setFinalizeModal] = useState(false);
-  const [revisionModal, setRevisionModal] = useState(false);
-  const [savedCases, setSavedCases] = useState<string[]>([]);
+  const [doc, setDoc] = useState<any>(null);
+  const [versions, setVersions] = useState<any[]>([]);
+  const [comments, setComments] = useState<any[]>([]);
+  const [content, setContent] = useState('');
+  const [loading, setLoading] = useState(true);
+  const [saveState, setSaveState] = useState<SaveState>('idle');
+  const [activeTab, setActiveTab] = useState<EditorTab>('suggestions');
+  const [newComment, setNewComment] = useState('');
+  const [wordCount, setWordCount] = useState(0);
+  const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Auto-save state
-  const [saveStatus, setSaveStatus] = useState<'idle' | 'saving' | 'saved'>('saved');
-
-  // Popover state: null = closed, 'ipc' | 'medical'
-  const [activePopover, setActivePopover] = useState<'ipc' | 'medical' | null>(null);
-  const editorRef = useRef<HTMLDivElement>(null);
-
-  // ── Auto-save interval ──────────────────────────────────────────────────────
+  // Fetch document, versions, comments
   useEffect(() => {
-    const interval = setInterval(() => {
-      setSaveStatus('saving');
-      setTimeout(() => setSaveStatus('saved'), 3000);
-    }, 30_000);
-    return () => clearInterval(interval);
-  }, []);
+    const fetchDoc = async () => {
+      setLoading(true);
 
-  // ── Close popovers on outside click ────────────────────────────────────────
-  useEffect(() => {
-    const handleClick = (e: MouseEvent) => {
-      if (editorRef.current && !editorRef.current.contains(e.target as Node)) {
-        setActivePopover(null);
+      const [docRes, versionsRes, commentsRes] = await Promise.all([
+        supabase
+          .from('documents')
+          .select(`
+            *,
+            client:profiles!documents_client_id_fkey (
+              id, full_name, avatar_initials
+            )
+          `)
+          .eq('id', id)
+          .single(),
+
+        supabase
+          .from('document_versions')
+          .select('*')
+          .eq('document_id', id)
+          .order('version', { ascending: false }),
+
+        supabase
+          .from('comments')
+          .select(`
+            *,
+            author:profiles!comments_author_id_fkey (
+              full_name, avatar_initials, role
+            )
+          `)
+          .eq('document_id', id)
+          .order('created_at', { ascending: true }),
+      ]);
+
+      if (docRes.data) {
+        setDoc(docRes.data);
+        const c = docRes.data.content ?? '';
+        setContent(c);
+        setWordCount(c.trim().split(/\s+/).filter(Boolean).length);
       }
+      setVersions(versionsRes.data ?? []);
+      setComments(commentsRes.data ?? []);
+      setLoading(false);
     };
-    document.addEventListener('mousedown', handleClick);
-    return () => document.removeEventListener('mousedown', handleClick);
-  }, []);
 
-  // ── Derived stats ────────────────────────────────────────────────────────────
-  const words = calcWordCount(BAIL_APPLICATION_CONTENT);
-  const readingMin = calcReadingTime(words);
+    if (id) fetchDoc();
+  }, [id]);
+
+  // Auto-save every 30 seconds when content changes
+  const handleContentChange = (val: string) => {
+    setContent(val);
+    setWordCount(val.trim().split(/\s+/).filter(Boolean).length);
+    setSaveState('idle');
+
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    autoSaveTimer.current = setTimeout(() => autoSave(val), 30000);
+  };
+
+  const autoSave = async (val: string) => {
+    setSaveState('saving');
+    await supabase
+      .from('documents')
+      .update({ content: val, updated_at: new Date().toISOString() })
+      .eq('id', id);
+    setSaveState('saved');
+    setTimeout(() => setSaveState('idle'), 3000);
+  };
+
+  const saveNow = () => {
+    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
+    autoSave(content);
+  };
+
+  // Approve document
+  const handleApprove = async () => {
+    // Save a version snapshot first
+    await supabase.from('document_versions').insert({
+      document_id: id,
+      version: (doc?.version ?? 1) + 1,
+      content,
+      changed_by: user!.id,
+      change_note: 'Approved by lawyer',
+    });
+
+    // Update document status
+    await supabase
+      .from('documents')
+      .update({
+        status: 'finalized',
+        content,
+        version: (doc?.version ?? 1) + 1,
+      })
+      .eq('id', id);
+
+    // Notify client
+    if (doc?.client_id) {
+      await supabase.from('notifications').insert({
+        user_id: doc.client_id,
+        type: 'finalized',
+        message: `Your document "${doc.title}" has been approved and finalized.`,
+        link: `/client/documents/${id}`,
+      });
+    }
+
+    navigate('/lawyer/queue');
+  };
+
+  // Request revision
+  const handleRequestRevision = async () => {
+    await supabase
+      .from('documents')
+      .update({ status: 'revision_needed' })
+      .eq('id', id);
+
+    if (doc?.client_id) {
+      await supabase.from('notifications').insert({
+        user_id: doc.client_id,
+        type: 'revision_needed',
+        message: `"${doc.title}" requires revision. Check the lawyer's comments.`,
+        link: `/client/documents/${id}`,
+      });
+    }
+
+    navigate('/lawyer/queue');
+  };
+
+  // Add comment
+  const handleAddComment = async () => {
+    if (!newComment.trim()) return;
+
+    const { data } = await supabase
+      .from('comments')
+      .insert({
+        document_id: id,
+        author_id: user!.id,
+        content: newComment.trim(),
+      })
+      .select(`
+        *,
+        author:profiles!comments_author_id_fkey (
+          full_name, avatar_initials, role
+        )
+      `)
+      .single();
+
+    if (data) setComments(prev => [...prev, data]);
+    setNewComment('');
+  };
+
+  if (loading) {
+    return (
+      <div className="p-6 space-y-4">
+        <div className="h-10 bg-gray-100 dark:bg-slate-850 rounded-xl animate-pulse w-1/3" />
+        <div className="h-[calc(100vh-140px)] bg-gray-100 dark:bg-slate-850 rounded-2xl animate-pulse" />
+      </div>
+    );
+  }
+
+  if (!doc) {
+    return (
+      <div className="p-6 text-center text-muted-text dark:text-slate-400 font-sans">
+        Document not found.{' '}
+        <button className="text-blue-brand dark:text-blue-400 underline" onClick={() => navigate('/lawyer/queue')}>
+          Back to queue
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div 
-      className="flex flex-col lg:flex-row gap-4 h-auto lg:h-[calc(100vh-8rem)] overflow-y-auto lg:overflow-hidden" 
-      ref={editorRef}
-    >
-
-      {/* ═══════════════════════════════════════════════════════════════════════
-          Panel 1 — Document Info
-      ═══════════════════════════════════════════════════════════════════════ */}
-      <div className="w-full lg:w-56 flex-shrink-0 flex flex-col gap-3 lg:overflow-y-auto">
-        <Card className="p-4">
-          <Badge variant="info" pulse className="mb-3 text-xs">Under Review</Badge>
-          <h2 className="font-serif text-sm font-bold text-dark-text dark:text-slate-100 leading-snug mb-3">
-            Bail Application — Imran Siddiqui
-          </h2>
-          <div className="space-y-2 text-xs">
-            {[
-              ['Type', 'Bail Application'],
-              ['Client', 'Imran Siddiqui'],
-              ['Submitted', '10 Mar 2026'],
-            ].map(([k, v]) => (
-              <div key={k}>
-                <span className="text-muted-text dark:text-slate-400">{k}: </span>
-                <span className="text-dark-text dark:text-slate-200 font-medium">{v}</span>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        <Card className="p-4 text-xs">
-          <p className="font-semibold text-dark-text dark:text-slate-100 mb-2">Questionnaire</p>
-          {[
-            ['Accused', 'Imran Siddiqui'],
-            ['FIR', '112/2026'],
-            ['Station', 'Shivajinagar, Pune'],
-            ['Charge', 'Section 302 IPC'],
-            ['Grounds', 'First-time offender, Medical condition'],
-          ].map(([k, v]) => (
-            <div key={k} className="mb-1.5">
-              <span className="text-muted-text dark:text-slate-400">{k}: </span>
-              <span className="text-dark-text dark:text-slate-200">{v}</span>
-            </div>
-          ))}
-        </Card>
-
-        {/* Version History */}
-        <Card className="p-4">
-          <p className="font-semibold text-dark-text dark:text-slate-100 text-xs mb-3 flex items-center gap-1.5">
-            <History size={13} className="text-muted-text dark:text-slate-400" /> Version History
+    <div className="p-4 pb-0">
+      {/* Top bar */}
+      <div className="flex items-center justify-between mb-3">
+        <div>
+          <h1 className="font-serif text-lg font-bold text-dark-text dark:text-slate-100">{doc.title}</h1>
+          <p className="text-xs text-muted-text dark:text-slate-400 font-sans">
+            Client: {doc.client?.full_name} • v{doc.version} • {doc.type}
           </p>
-          <div className="space-y-2">
-            {VERSION_HISTORY.map(({ v, date, label }) => (
-              <div key={v} className="flex items-center justify-between gap-1.5">
-                <span className="text-[10px] font-bold bg-navy dark:bg-blue-900/60 text-white dark:text-blue-300 px-1.5 py-0.5 rounded-md shrink-0">
-                  v{v}
-                </span>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[10px] text-muted-text dark:text-slate-400 truncate">{date}</p>
-                  <p className="text-[10px] text-dark-text dark:text-slate-200 truncate">{label}</p>
-                </div>
-                <button
-                  onClick={() => addToast(`Viewing v${v}`, 'info')}
-                  className="text-[10px] text-blue-brand dark:text-blue-400 hover:underline shrink-0"
-                >
-                  View
-                </button>
-              </div>
-            ))}
-          </div>
-        </Card>
-
-        <div className="space-y-2">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            className="w-full text-xs justify-start dark:text-slate-300 dark:hover:bg-slate-700" 
-            onClick={() => addToast('Request sent to client', 'success')}
+        </div>
+        <div className="flex items-center gap-2">
+          {/* Save state */}
+          <span className={`text-xs font-sans flex items-center gap-1 ${
+            saveState === 'saving' ? 'text-amber-500' :
+            saveState === 'saved' ? 'text-success' : 'text-muted-text'
+          }`}>
+            {saveState === 'saving' && (
+              <><span className="w-3 h-3 border border-amber-500 border-t-transparent
+                rounded-full animate-spin" />Saving…</>
+            )}
+            {saveState === 'saved' && <><Check size={12} />Saved</>}
+          </span>
+          <button
+            onClick={saveNow}
+            className="flex items-center gap-1.5 px-3 py-1.5 border border-border dark:border-slate-600
+              rounded-lg text-xs font-semibold text-muted-text dark:text-slate-400 hover:bg-surface-gray dark:hover:bg-slate-700
+              font-sans transition-colors"
           >
-            💬 Request More Info
-          </Button>
-          <Button variant="primary" size="sm" className="w-full text-xs" onClick={() => setFinalizeModal(true)}>
-            <CheckCircle size={13} /> Mark Finalized
-          </Button>
-          <Button variant="secondary" size="sm" className="w-full text-xs text-amber-700 dark:text-amber-500" onClick={() => setRevisionModal(true)}>
-            Return for Revision
-          </Button>
+            <Save size={12} /> Save
+          </button>
+          <button
+            onClick={handleRequestRevision}
+            className="px-3 py-1.5 border border-border dark:border-slate-600 rounded-lg text-xs font-semibold
+              text-muted-text dark:text-slate-400 hover:bg-surface-gray dark:hover:bg-slate-700 font-sans transition-colors"
+          >
+            ↩ Revision
+          </button>
+          <button
+            onClick={handleApprove}
+            className="flex items-center gap-1.5 px-4 py-1.5 bg-success text-white
+              rounded-lg text-xs font-semibold font-sans hover:opacity-90 transition-opacity"
+          >
+            <ThumbsUp size={12} /> Approve
+          </button>
         </div>
       </div>
 
-      {/* ═══════════════════════════════════════════════════════════════════════
-          Panel 2 — Editor
-      ═══════════════════════════════════════════════════════════════════════ */}
-      <div className="w-full lg:flex-1 min-w-0 flex flex-col min-h-[500px] lg:h-auto">
-        <Card className="flex-1 flex flex-col overflow-hidden border border-border dark:border-slate-700">
+      {/* 3-Panel Editor */}
+      <div className="grid grid-cols-[200px_1fr_260px] h-[calc(100vh-130px)]
+        border border-border dark:border-slate-700 rounded-2xl overflow-hidden">
+
+        {/* Left: Info + Versions */}
+        <div className="bg-surface-gray dark:bg-slate-900 border-r border-border dark:border-slate-700 overflow-y-auto p-4">
+          <p className="text-xs font-bold text-muted-text dark:text-slate-400 uppercase tracking-wider
+            font-sans mb-3">Document Info</p>
+          {[
+            ['Type', doc.type],
+            ['Status', doc.status.replace(/_/g, ' ')],
+            ['District', doc.district ?? '—'],
+            ['FIR No.', doc.fir_number ?? '—'],
+            ['Version', `v${doc.version}`],
+            ['Submitted', new Date(doc.created_at).toLocaleDateString('en-IN')],
+          ].map(([k, v]) => (
+            <div key={k as string}
+              className="flex justify-between py-2 border-b border-border/40 dark:border-slate-700/40 text-xs font-sans">
+              <span className="text-muted-text dark:text-slate-400">{k}</span>
+              <span className="font-semibold text-dark-text dark:text-slate-200 capitalize">{v}</span>
+            </div>
+          ))}
+
+          {/* Version History */}
+          {versions.length > 0 && (
+            <>
+              <p className="text-xs font-bold text-muted-text dark:text-slate-400 uppercase tracking-wider
+                font-sans mt-4 mb-3">Version History</p>
+              {versions.map(v => (
+                <div key={v.id}
+                  className="p-2 rounded-lg border border-border dark:border-slate-700 bg-white dark:bg-slate-800 mb-2 text-xs font-sans">
+                  <div className="font-semibold text-dark-text dark:text-slate-100">v{v.version}</div>
+                  <div className="text-muted-text dark:text-slate-400 mt-0.5">{v.change_note}</div>
+                  <div className="text-muted-text/60 dark:text-slate-500 text-xs mt-0.5">
+                    {new Date(v.created_at).toLocaleDateString('en-IN')}
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
+        </div>
+
+        {/* Center: Editor */}
+        <div className="flex flex-col overflow-hidden bg-white dark:bg-slate-850">
           {/* Toolbar */}
-          <div className="flex items-center gap-1 px-4 py-2 border-b border-border dark:border-slate-700 flex-wrap">
-            {[Bold, Italic, Underline].map((Icon, i) => (
-              <button 
-                key={i} 
-                className="p-1.5 rounded hover:bg-surface-gray dark:hover:bg-slate-700 text-muted-text dark:text-slate-400 hover:text-dark-text dark:hover:text-slate-200 transition-colors"
-              >
-                <Icon size={15} />
+          <div className="border-b border-border dark:border-slate-700 px-4 py-2 flex gap-1.5 flex-wrap items-center">
+            {['B', 'I', 'U', 'H1', 'H2', '•', '1.'].map(b => (
+              <button key={b}
+                className="px-2 py-1 border border-border dark:border-slate-700 rounded text-xs font-bold
+                  font-sans hover:bg-light-blue dark:hover:bg-slate-800 text-dark-text dark:text-slate-300 transition-colors">
+                {b}
               </button>
             ))}
-            <div className="w-px h-5 bg-border dark:bg-slate-700 mx-1" />
-            <button className="px-2 py-1 text-xs rounded hover:bg-surface-gray dark:hover:bg-slate-700 text-muted-text dark:text-slate-400 dark:hover:text-slate-200">Heading</button>
-            <button className="px-2 py-1 text-xs rounded hover:bg-surface-gray dark:hover:bg-slate-700 text-muted-text dark:text-slate-400 dark:hover:text-slate-200">List</button>
-            <button className="px-2 py-1 text-xs rounded hover:bg-surface-gray dark:hover:bg-slate-700 text-muted-text dark:text-slate-400 dark:hover:text-slate-200 flex items-center gap-1">
-              <MessageSquare size={12} /> Comment
-            </button>
-
-            {/* Auto-save indicator */}
-            <div className="ml-auto flex items-center gap-1 text-xs">
-              {saveStatus === 'saving' && (
-                <span className="text-muted-text dark:text-slate-400 flex items-center gap-1">
-                  <Clock size={11} className="animate-spin" /> Saving...
-                </span>
-              )}
-              {saveStatus === 'saved' && (
-                <span className="text-emerald-600 dark:text-emerald-400 font-medium">All changes saved ✓</span>
-              )}
-            </div>
+            <div className="w-px h-4 bg-border dark:bg-slate-700 mx-1" />
+            <span className="ml-auto text-xs text-muted-text dark:text-slate-400 font-sans">
+              Track Changes: ON
+            </span>
           </div>
 
-          {/* Document Content */}
-          <div className="flex-1 overflow-y-auto p-6 font-mono text-xs leading-relaxed text-dark-text dark:text-slate-100 bg-white dark:bg-slate-900">
-            {/* Document header */}
-            <div className="text-center mb-6">
-              <div className="text-xl font-bold text-navy dark:text-gold font-sans mb-1">सत्र न्यायालय, पुणे</div>
-              <div className="text-sm font-bold tracking-wider text-dark-text dark:text-slate-200">IN THE COURT OF SESSIONS JUDGE PUNE</div>
-              <div className="text-xs uppercase tracking-widest text-muted-text dark:text-slate-400 mt-1">APPLICATION FOR BAIL BEFORE ARREST</div>
-              <div className="text-xs text-muted-text dark:text-slate-400">Case No. FIR 112/2026 Police Station Shivajinagar</div>
-            </div>
+          {/* Text Area */}
+          <textarea
+            value={content}
+            onChange={e => handleContentChange(e.target.value)}
+            className="flex-1 p-5 text-sm text-dark-text dark:text-slate-150 leading-relaxed resize-none
+              focus:outline-none font-mono bg-white dark:bg-slate-900"
+            placeholder="Document content will appear here…"
+            spellCheck={false}
+          />
 
-            <div className="relative space-y-3">
-
-              {/* IPC sections highlight */}
-              <div className="relative inline">
-                <span
-                  className="bg-yellow-200 dark:bg-yellow-800/60 text-dark-text dark:text-slate-100 px-0.5 rounded cursor-pointer hover:bg-yellow-300 dark:hover:bg-yellow-700 transition-colors"
-                  onClick={e => { e.stopPropagation(); setActivePopover(activePopover === 'ipc' ? null : 'ipc'); }}
-                >
-                  Section 420 and 406
-                </span>
-                {activePopover === 'ipc' && (
-                  <CommentPopover
-                    author="Adv. Rahul Joshi"
-                    time="2h ago"
-                    comment="Verify IPC section references against FIR copy"
-                    onClose={() => setActivePopover(null)}
-                  />
-                )}
-              </div>
-
-              {/* Medical condition highlight */}
-              <div
-                className="bg-amber-50 dark:bg-slate-800/40 border border-amber-200 dark:border-slate-700 rounded px-2 py-1 relative group"
-                onClick={e => e.stopPropagation()}
-              >
-                <p className="font-mono text-xs text-dark-text dark:text-slate-200">
-                  <strong>4.</strong> That the Applicant suffers from a serious medical condition, namely{' '}
-                  <span
-                    className="bg-yellow-200 dark:bg-yellow-800/60 px-0.5 rounded cursor-pointer hover:bg-yellow-300 dark:hover:bg-yellow-750 transition-colors relative"
-                    onClick={e => { e.stopPropagation(); setActivePopover(activePopover === 'medical' ? null : 'medical'); }}
-                  >
-                    Type-II Diabetes Mellitus with associated cardiovascular complications, as evidenced by medical certificates and treatment records from KEM Hospital, Pune
-                    {activePopover === 'medical' && (
-                      <CommentPopover
-                        author="Adv. Rahul Joshi"
-                        time="1h ago"
-                        comment="Please attach Exhibit-A from KEM Hospital"
-                        onClose={() => setActivePopover(null)}
-                      />
-                    )}
-                  </span>.
-                </p>
-                {/* Original comment bubble */}
-                <div className="absolute right-2 top-1 bg-navy text-white text-[10px] rounded-lg px-2 py-1 opacity-0 group-hover:opacity-100 transition-opacity max-w-[200px] z-10 shadow-lg">
-                  💬 Adnan Raza: Consider citing 2019 SCMR 1244 here
-                </div>
-              </div>
-
-              <pre className="whitespace-pre-wrap font-mono text-xs text-dark-text dark:text-slate-300">{BAIL_APPLICATION_CONTENT}</pre>
-            </div>
+          {/* Footer */}
+          <div className="border-t border-border dark:border-slate-700 px-4 py-2 flex items-center gap-4
+            bg-surface-gray/50 dark:bg-slate-900/50">
+            <span className="text-xs text-muted-text dark:text-slate-400 font-sans">
+              {wordCount} words
+            </span>
+            <span className="text-xs text-muted-text dark:text-slate-400 font-sans">
+              ~{Math.max(1, Math.ceil(wordCount / 200))} min read
+            </span>
           </div>
+        </div>
 
-          {/* Footer — word count + reading time */}
-          <div className="px-4 py-2 border-t border-border dark:border-slate-700 bg-surface-gray/50 dark:bg-slate-900/50 flex items-center justify-between text-xs text-muted-text dark:text-slate-400">
-            <span>Words: {words} | Reading time: ~{readingMin} min</span>
-            <span>Last saved: 2 minutes ago</span>
-          </div>
-        </Card>
-      </div>
-
-      {/* ═══════════════════════════════════════════════════════════════════════
-          Panel 3 — AI Assistant
-      ═══════════════════════════════════════════════════════════════════════ */}
-      <div className="w-full lg:w-72 flex-shrink-0 flex flex-col min-h-[400px] lg:h-auto">
-        <Card className="flex-1 flex flex-col overflow-hidden border border-border dark:border-slate-700">
-          <div className="px-4 py-3 border-b border-border dark:border-slate-700">
-            <h3 className="font-serif text-sm font-semibold text-dark-text dark:text-slate-100 flex items-center gap-2">
-              <Lightbulb size={15} className="text-gold" /> AI Legal Assistant
-            </h3>
-          </div>
-
+        {/* Right: AI Assistant */}
+        <div className="border-l border-border dark:border-slate-700 flex flex-col overflow-hidden bg-surface-gray dark:bg-slate-900">
           {/* Tabs */}
-          <div className="flex border-b border-border dark:border-slate-700">
-            {(['suggestions', 'precedents', 'comments'] as const).map(tab => (
+          <div className="flex border-b border-border dark:border-slate-700 bg-white dark:bg-slate-850">
+            {(['suggestions', 'precedents', 'comments'] as EditorTab[]).map(tab => (
               <button
                 key={tab}
                 onClick={() => setActiveTab(tab)}
-                className={`flex-1 py-2 text-xs font-medium capitalize transition-colors
-                  ${activeTab === tab 
-                    ? 'text-navy dark:text-gold border-b-2 border-navy dark:border-gold font-semibold' 
-                    : 'text-muted-text dark:text-slate-400 hover:text-dark-text dark:hover:text-slate-200'}`}
+                className={`flex-1 py-3 text-xs font-bold font-sans capitalize
+                  border-b-2 transition-all ${
+                  activeTab === tab
+                    ? 'border-gold text-dark-text dark:text-gold'
+                    : 'border-transparent text-muted-text dark:text-slate-400 hover:text-dark-text dark:hover:text-slate-200'
+                }`}
               >
                 {tab}
               </button>
             ))}
           </div>
 
-          <div className="flex-1 overflow-y-auto p-4 space-y-3 bg-white dark:bg-slate-800">
-
-            {/* Suggestions tab */}
-            {activeTab === 'suggestions' && AI_SUGGESTIONS.map((s, i) => (
-              <div key={i} className={`p-3 rounded-xl border text-xs leading-relaxed
-                ${s.type === 'warning' 
-                  ? 'bg-amber-50 dark:bg-amber-950/20 border-amber-200 dark:border-amber-900/50 text-dark-text dark:text-slate-300' 
-                  : 'bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900/50 text-dark-text dark:text-slate-300'}`}>
-                <div className="flex items-start gap-2 mb-2">{s.icon}<span>{s.text}</span></div>
+          {/* Tab Content */}
+          <div className="flex-1 overflow-y-auto p-3">
+            {/* Suggestions */}
+            {activeTab === 'suggestions' && SUGGESTIONS.map((s, i) => (
+              <div key={i}
+                className="bg-white dark:bg-slate-850 rounded-xl border border-border dark:border-slate-700 p-3 mb-3">
+                <p className="text-xs font-bold text-dark-text dark:text-slate-200 font-sans mb-1">
+                  💡 {s.title}
+                </p>
+                <p className="text-xs text-muted-text dark:text-slate-400 font-sans leading-relaxed">
+                  {s.body}
+                </p>
                 <button
-                  onClick={() => addToast('Suggestion inserted into document', 'success')}
-                  className="text-xs text-blue-brand dark:text-blue-400 hover:underline font-medium"
+                  onClick={() => {
+                    setContent(prev => prev + '\n\n[SUGGESTED] ' + s.body);
+                    setSaveState('idle');
+                  }}
+                  className="mt-2 text-xs text-blue-brand dark:text-blue-400 font-semibold font-sans
+                    hover:underline"
                 >
-                  Insert into doc
+                  Insert into document →
                 </button>
               </div>
             ))}
 
-            {/* Precedents tab */}
+            {/* Precedents */}
             {activeTab === 'precedents' && (
-              <div className="space-y-3">
-                <div className="flex gap-2">
-                  <input 
-                    placeholder="Search precedents..." 
-                    className="flex-1 px-2 py-1.5 text-xs border border-border dark:border-slate-700 bg-white dark:bg-slate-900 text-dark-text dark:text-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-blue-brand" 
-                  />
-                  <button 
-                    onClick={() => addToast('Precedent search completed', 'success')}
-                    className="p-1.5 bg-navy dark:bg-blue-brand text-white rounded-lg hover:opacity-90"
-                  >
-                    <Search size={12} />
-                  </button>
-                </div>
-                {PRECEDENTS.map(p => (
-                  <div key={p.citation} className="p-3 bg-surface-gray dark:bg-slate-900/40 rounded-xl border border-border/50 dark:border-slate-700/50">
-                    <p className="font-semibold text-xs text-dark-text dark:text-slate-200">{p.name}</p>
-                    <p className="font-mono text-xs text-gold font-semibold mb-1">{p.citation}</p>
-                    <p className="text-xs text-muted-text dark:text-slate-400 leading-snug mb-2">{p.summary}</p>
-                    <button
-                      onClick={() => setSavedCases(prev => prev.includes(p.citation) ? prev.filter(x => x !== p.citation) : [...prev, p.citation])}
-                      className={`text-xs flex items-center gap-1 ${savedCases.includes(p.citation) ? 'text-gold' : 'text-muted-text dark:text-slate-400 hover:text-navy dark:hover:text-slate-200'}`}
-                    >
-                      <BookMarked size={11} />
-                      {savedCases.includes(p.citation) ? 'Saved' : 'Save to Library'}
-                    </button>
+              <div className="space-y-2">
+                {[
+                  {
+                    title: 'State of Maharashtra v. Vijay Salaskar',
+                    court: 'Bombay HC • 2019',
+                    summary: 'Bail cannot be denied solely on severity of charges.'
+                  },
+                  {
+                    title: 'Arnesh Kumar v. State of Bihar',
+                    court: 'Supreme Court • 2014',
+                    summary: 'Guidelines on arrest for offences punishable up to 7 years.'
+                  },
+                  {
+                    title: 'Sanjay Chandra v. CBI',
+                    court: 'Supreme Court • 2012',
+                    summary: 'Bail is the rule, jail is the exception — personal liberty.'
+                  },
+                ].map((p, i) => (
+                  <div key={i}
+                    className="bg-white dark:bg-slate-850 rounded-xl border border-border dark:border-slate-700 p-3 cursor-pointer
+                      hover:border-blue-brand dark:hover:border-blue-500 transition-colors">
+                    <p className="text-xs font-bold text-dark-text dark:text-slate-200 font-sans">{p.title}</p>
+                    <p className="text-xs text-blue-brand dark:text-blue-400 font-sans mt-0.5">{p.court}</p>
+                    <p className="text-xs text-muted-text dark:text-slate-400 font-sans mt-1 leading-relaxed">
+                      {p.summary}
+                    </p>
                   </div>
                 ))}
               </div>
             )}
 
-            {/* Comments tab */}
-            {activeTab === 'comments' && THREADS.map((t, i) => (
-              <div key={i} className="p-3 bg-surface-gray dark:bg-slate-900/40 rounded-xl border border-border/50 dark:border-slate-700/50">
-                <p className="text-xs font-semibold text-navy dark:text-gold mb-1">{t.author}</p>
-                <p className="text-xs text-dark-text dark:text-slate-300 leading-snug mb-1">{t.text}</p>
-                <p className="text-[10px] text-muted-text dark:text-slate-500">{t.time}</p>
-                <div className="flex gap-1 mt-2">
-                  <input 
-                    placeholder="Reply..." 
-                    className="flex-grow px-2 py-1 text-xs border border-border dark:border-slate-700 bg-white dark:bg-slate-900 text-dark-text dark:text-slate-200 rounded-lg focus:outline-none" 
+            {/* Comments */}
+            {activeTab === 'comments' && (
+              <div className="flex flex-col h-full">
+                <div className="flex-1 space-y-3 mb-3">
+                  {comments.map(c => (
+                    <div key={c.id}
+                      className="bg-white dark:bg-slate-850 rounded-xl border border-border dark:border-slate-700 p-3">
+                      <div className="flex items-center gap-2 mb-1.5">
+                        <div className="w-6 h-6 rounded-full bg-gold flex items-center
+                          justify-center text-white text-xs font-bold flex-shrink-0">
+                          {c.author?.avatar_initials ?? '?'}
+                        </div>
+                        <span className="text-xs font-bold text-dark-text dark:text-slate-200 font-sans">
+                          {c.author?.full_name}
+                        </span>
+                        <span className="text-[10px] text-muted-text dark:text-slate-500 font-sans ml-auto">
+                          {new Date(c.created_at).toLocaleDateString('en-IN')}
+                        </span>
+                      </div>
+                      <p className="text-xs text-dark-text dark:text-slate-350 font-sans leading-relaxed">
+                        {c.content}
+                      </p>
+                    </div>
+                  ))}
+                  {comments.length === 0 && (
+                    <p className="text-xs text-muted-text dark:text-slate-400 font-sans text-center py-4">
+                      No comments yet
+                    </p>
+                  )}
+                </div>
+                <div className="flex gap-2 pt-2 border-t border-border dark:border-slate-700">
+                  <input
+                    value={newComment}
+                    onChange={e => setNewComment(e.target.value)}
+                    onKeyDown={e => e.key === 'Enter' && handleAddComment()}
+                    placeholder="Add a comment…"
+                    className="flex-1 px-3 py-2 text-xs border border-border dark:border-slate-700 bg-white dark:bg-slate-800 text-dark-text dark:text-slate-200 rounded-xl
+                      focus:outline-none focus:ring-2 focus:ring-blue-brand/20 font-sans"
                   />
-                  <button 
-                    onClick={() => addToast('Reply added', 'success')}
-                    className="px-2 py-1 text-[10px] bg-navy dark:bg-blue-brand text-white rounded hover:opacity-90"
+                  <button
+                    onClick={handleAddComment}
+                    className="p-2 bg-navy text-white rounded-xl hover:bg-blue-brand
+                      transition-colors"
                   >
-                    Reply
+                    <Send size={13} />
                   </button>
                 </div>
               </div>
-            ))}
+            )}
           </div>
-        </Card>
+        </div>
       </div>
-
-      {/* Finalize Modal */}
-      <Modal isOpen={finalizeModal} onClose={() => setFinalizeModal(false)} title="Mark as Finalized" size="sm">
-        <p className="text-sm text-dark-text dark:text-slate-300 mb-4">Are you sure you want to finalize this document? The client will be notified.</p>
-        <div className="flex gap-3 justify-end">
-          <Button variant="outline" onClick={() => setFinalizeModal(false)}>Cancel</Button>
-          <Button variant="primary" onClick={() => { setFinalizeModal(false); addToast('Document finalized successfully!', 'success'); }}>Confirm Finalize</Button>
-        </div>
-      </Modal>
-
-      {/* Revision Modal */}
-      <Modal isOpen={revisionModal} onClose={() => setRevisionModal(false)} title="Return for Revision" size="sm">
-        <textarea 
-          rows={3} 
-          placeholder="Add revision notes for the client..." 
-          className="w-full px-3 py-2 border border-border dark:border-slate-700 bg-white dark:bg-slate-900 text-dark-text dark:text-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-blue-brand/30 mb-4" 
-        />
-        <div className="flex gap-3 justify-end">
-          <Button variant="outline" onClick={() => setRevisionModal(false)}>Cancel</Button>
-          <Button variant="secondary" onClick={() => { setRevisionModal(false); addToast('Revision request sent to client', 'info'); }}>Send Revision Request</Button>
-        </div>
-      </Modal>
     </div>
   );
 };

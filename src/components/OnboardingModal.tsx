@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { useAuth } from '../context/AuthContext';
 import { useApp } from '../context/AppContext';
 import { 
@@ -114,7 +115,7 @@ export const OnboardingModal: React.FC = () => {
 
   const checklist = isLawyer ? lawyerChecklist : clientChecklist;
 
-  return (
+  return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       {/* Backdrop */}
       <div 
@@ -335,6 +336,7 @@ export const OnboardingModal: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
+    </div>,
+    document.body
   );
 };
