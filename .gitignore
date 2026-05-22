@@ -1,24 +1,40 @@
-# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
+# Environment / secrets
+.env
+*.env
+backend/.env
 
-# dependencies
-/node_modules
-/.pnp
-.pnp.js
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+.eggs/
+.mypy_cache/
+.pytest_cache/
+*.egg
 
-# testing
-/coverage
+# Virtual environments
+venv/
+.venv/
+env/
 
-# production
-/build
+# Node / frontend
+node_modules/
+frontend/node_modules/
+frontend/build/
+frontend/.env
+frontend/.env.local
+frontend/.env.*.local
 
-# misc
+# Vector store (large binary files)
+vector_store/*.index
+vector_store/*.pkl
+
+# IDE / OS
 .DS_Store
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-
+Thumbs.db
+.vscode/
+.idea/

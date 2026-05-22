@@ -1,0 +1,74 @@
+[
+  {
+    "case_name": "State of Maharashtra v. Ramesh Kumar",
+    "citation": "AIR 2019 SC 872",
+    "court": "Supreme Court of India",
+    "year": 2019,
+    "domain": "criminal",
+    "bench_type": "division",
+    "outcome": "bail_granted",
+    "ipc_sections": "302,307",
+    "summary": "Held that bail may be granted where the accused has been in custody for a prolonged period and the trial is unlikely to conclude soon, provided the accused does not pose a flight risk or threat to witnesses.",
+    "source_url": "https://indiankanoon.org/doc/1715421/"
+  },
+  {
+    "case_name": "Arnesh Kumar v. State of Bihar",
+    "citation": "AIR 2014 SC 2756",
+    "court": "Supreme Court of India",
+    "year": 2014,
+    "domain": "criminal",
+    "bench_type": "division",
+    "outcome": "remanded",
+    "ipc_sections": "498A",
+    "summary": "Laid down mandatory guidelines for police officers before making arrests under Section 498-A of the IPC to prevent arbitrary arrests. Mandated that notice of appearance under Section 41A CrPC must be served within two weeks of the case institution.",
+    "source_url": "https://indiankanoon.org/doc/2982624/"
+  },
+  {
+    "case_name": "Satender Kumar Antil v. Central Bureau of Investigation",
+    "citation": "2022 SCC OnLine SC 825",
+    "court": "Supreme Court of India",
+    "year": 2022,
+    "domain": "criminal",
+    "bench_type": "division",
+    "outcome": "bail_granted",
+    "ipc_sections": "409,420,120B",
+    "summary": "Detailed guidelines categorizing offenses and streamlining bail procedures in India. Emphasized that bail is the rule and jail is the exception, and highlighted the need to avoid mechanical arrests under CrPC Section 170.",
+    "source_url": "https://indiankanoon.org/doc/106362548/"
+  },
+  {
+    "case_name": "Lalita Kumari v. State of Uttar Pradesh",
+    "citation": "AIR 2014 SC 187",
+    "court": "Supreme Court of India",
+    "year": 2013,
+    "domain": "criminal",
+    "bench_type": "constitution",
+    "outcome": "appeal_allowed",
+    "ipc_sections": "364,302",
+    "summary": "Held that registration of an FIR is mandatory under Section 154 of the CrPC if the information discloses the commission of a cognizable offense, and no preliminary inquiry is permissible in such cases.",
+    "source_url": "https://indiankanoon.org/doc/10239019/"
+  },
+  {
+    "case_name": "Gurbaksh Singh Sibbia v. State of Punjab",
+    "citation": "1980 SCC (2) 565",
+    "court": "Supreme Court of India",
+    "year": 1980,
+    "domain": "criminal",
+    "bench_type": "constitution",
+    "outcome": "bail_granted",
+    "ipc_sections": "406,409",
+    "summary": "Landmark decision on Anticipatory Bail under Section 438 of the CrPC. Held that the power to grant anticipatory bail is of wide amplitude and shouldn't be castrated by reading non-existent restrictions into the statute.",
+    "source_url": "https://indiankanoon.org/doc/1768222/"
+  },
+  {
+    "case_name": "Sushila Aggarwal v. State (NCT of Delhi)",
+    "citation": "2020 SCC OnLine SC 98",
+    "court": "Supreme Court of India",
+    "year": 2020,
+    "domain": "criminal",
+    "bench_type": "constitution",
+    "outcome": "bail_granted",
+    "ipc_sections": "302,120B",
+    "summary": "Clarified that there is no general rule that anticipatory bail should be limited to a fixed period or must end when the court summons the accused or frames charges. It can continue till the end of the trial.",
+    "source_url": "https://indiankanoon.org/doc/29426462/"
+  }
+]
