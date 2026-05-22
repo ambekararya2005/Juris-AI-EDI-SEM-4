@@ -9,6 +9,7 @@ import Skeleton from '../../components/ui/Skeleton';
 import { RiskFlag } from '../../types';
 import { useApp } from '../../context/AppContext';
 import { analyzeRisk } from '../../lib/api';
+import DisclaimerBanner from '../../components/DisclaimerBanner';
 
 // 4-level severity style map
 const severityColors: Record<string, { bg: string; text: string; border: string; badge: string }> = {
@@ -83,6 +84,7 @@ const ContractRisk: React.FC = () => {
           description: clause.explanation || '',
           originalText: clause.excerpt || '',
           suggestedRevision: clause.suggestion || '',
+          applicable_law: clause.applicable_law || '',
         })
       );
       setApiFlags(flags.length ? flags : []);
@@ -378,6 +380,16 @@ const ContractRisk: React.FC = () => {
                                 <p className="text-sm text-dark-text dark:text-slate-300 mt-1 leading-relaxed">{flag.description}</p>
                               </div>
 
+                              {/* Applicable Law */}
+                              {(flag as any).applicable_law && (
+                                <div>
+                                  <span className="text-xs font-semibold text-muted-text dark:text-slate-400 uppercase tracking-wider">Applicable Law</span>
+                                  <p className="text-xs text-navy dark:text-blue-300 mt-1 font-mono bg-light-blue dark:bg-slate-700/50 px-2 py-1 rounded-lg inline-block">
+                                    {(flag as any).applicable_law}
+                                  </p>
+                                </div>
+                              )}
+
                               {/* Collapsible Suggested Fix */}
                               <div className="border-t border-border dark:border-slate-700/60 pt-3">
                                 <button
@@ -479,6 +491,8 @@ const ContractRisk: React.FC = () => {
               >
                 Request Lawyer Review →
               </Button>
+
+              <DisclaimerBanner />
             </div>
           </div>
         </div>

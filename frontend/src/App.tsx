@@ -1,11 +1,13 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
 import { AuthProvider } from './context/AuthContext';
 import { AppProvider } from './context/AppContext';
 import Layout from './components/layout/Layout';
 
 // Auth pages
 import Login from './pages/auth/Login';
+import Landing from './pages/Landing';
 
 // Client pages
 import ClientDashboard from './pages/client/ClientDashboard';
@@ -27,10 +29,11 @@ import Settings from './pages/shared/Settings';
 
 import { useAuth } from './context/AuthContext';
 
-// Smart redirect based on role
+// Redirect authenticated users to their dashboard; unauthenticated users see the landing page
 const RoleRedirect: React.FC = () => {
-  const { user } = useAuth();
-  if (!user) return <Navigate to="/login" replace />;
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  if (!user) return <Landing />;
   return <Navigate to={user.role === 'lawyer' ? '/lawyer/dashboard' : '/client/dashboard'} replace />;
 };
 
@@ -38,6 +41,7 @@ const App: React.FC = () => {
   return (
     <AuthProvider>
       <AppProvider>
+        <Toaster position="top-right" toastOptions={{ duration: 4000 }} />
         <BrowserRouter>
           <Routes>
             {/* Public */}

@@ -1,9 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { ArrowRight, Clock } from 'lucide-react';
+import { ArrowRight, Clock, CheckCircle, XCircle } from 'lucide-react';
 import Card from '../../components/ui/Card';
+import EmptyState from '../../components/ui/EmptyState';
 import { getMockReviewQueuePage } from '../../data/mockService';
+import { useApp } from '../../context/AppContext';
+import { approveDocument, rejectDocument } from '../../lib/api';
 
 type Priority = 'all' | 'urgent' | 'normal' | 'low';
 
@@ -26,9 +29,11 @@ const timeAgo = (dateStr: string): string => {
 const ReviewQueue: React.FC = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
+  const { addToast } = useApp();
   const [queue, setQueue] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<Priority>('all');
+  const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchQueue = async () => {
@@ -108,13 +113,10 @@ const ReviewQueue: React.FC = () => {
       {/* Document Cards */}
       <div className="space-y-3">
         {filtered.length === 0 ? (
-          <div className="text-center py-16">
-            <div className="text-4xl mb-3">🎉</div>
-            <p className="font-semibold text-dark-text dark:text-slate-200 font-sans">Queue is clear!</p>
-            <p className="text-sm text-muted-text dark:text-slate-400 font-sans mt-1">
-              No {filter !== 'all' ? filter : ''} documents pending review
-            </p>
-          </div>
+          <EmptyState
+            title="Queue is clear!"
+            subtitle={`No ${filter !== 'all' ? filter + ' ' : ''}documents pending review`}
+          />
         ) : (
           filtered.map(doc => {
             const priority = getPriority(doc.created_at);
@@ -179,7 +181,6 @@ const ReviewQueue: React.FC = () => {
                         transition-colors"
                       onClick={e => {
                         e.stopPropagation();
-                        // skip — move to bottom of queue
                         setQueue(prev => {
                           const rest = prev.filter(d => d.id !== doc.id);
                           return [...rest, doc];
@@ -187,6 +188,46 @@ const ReviewQueue: React.FC = () => {
                       }}
                     >
                       Skip
+                    </button>
+                    <button
+                      disabled={actionLoading === doc.id}
+                      className="px-3 py-1.5 bg-emerald-600 text-white rounded-lg text-xs font-semibold font-sans
+                        hover:bg-emerald-500 transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                      onClick={async e => {
+                        e.stopPropagation();
+                        setActionLoading(doc.id);
+                        try {
+                          await approveDocument(doc.id);
+                          setQueue(prev => prev.filter(d => d.id !== doc.id));
+                          addToast('Document approved!', 'success');
+                        } catch {
+                          addToast('Could not approve — check backend connection.', 'error');
+                        } finally {
+                          setActionLoading(null);
+                        }
+                      }}
+                    >
+                      <CheckCircle size={12} /> Approve
+                    </button>
+                    <button
+                      disabled={actionLoading === doc.id}
+                      className="px-3 py-1.5 bg-red-600 text-white rounded-lg text-xs font-semibold font-sans
+                        hover:bg-red-500 transition-colors flex items-center gap-1.5 disabled:opacity-50"
+                      onClick={async e => {
+                        e.stopPropagation();
+                        setActionLoading(doc.id);
+                        try {
+                          await rejectDocument(doc.id, 'Revision required');
+                          setQueue(prev => prev.filter(d => d.id !== doc.id));
+                          addToast('Document sent for revision.', 'info');
+                        } catch {
+                          addToast('Could not reject — check backend connection.', 'error');
+                        } finally {
+                          setActionLoading(null);
+                        }
+                      }}
+                    >
+                      <XCircle size={12} /> Reject
                     </button>
                     <button
                       className="px-3 py-1.5 bg-navy text-white rounded-lg text-xs

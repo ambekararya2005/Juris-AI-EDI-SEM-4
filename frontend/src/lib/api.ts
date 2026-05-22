@@ -1,4 +1,5 @@
 import { supabase } from './supabase'
+import toast from 'react-hot-toast'
 
 const getApiBase = (): string => {
   if (typeof process !== 'undefined' && process.env?.REACT_APP_API_URL) {
@@ -50,7 +51,9 @@ export async function apiFetch(path: string, options: RequestInit = {}) {
 
   if (!res.ok) {
     const errorText = await res.text()
-    throw new Error(parseApiError(errorText) || `HTTP ${res.status}`)
+    const msg = parseApiError(errorText) || `HTTP ${res.status}`
+    toast.error(msg)
+    throw new Error(msg)
   }
 
   return res.json()
@@ -156,6 +159,17 @@ export async function streamDraft(
     const chunk = decoder.decode(value).replace(/^data: /, '')
     onChunk(chunk)
   }
+}
+
+export async function approveDocument(docId: string) {
+  return apiFetch(`/documents/${docId}/approve`, { method: 'PATCH' })
+}
+
+export async function rejectDocument(docId: string, reason?: string) {
+  return apiFetch(`/documents/${docId}/reject`, {
+    method: 'PATCH',
+    body: JSON.stringify({ reason: reason ?? '' }),
+  })
 }
 
 // ── Case Law Search ─────────────────────────────────────────────

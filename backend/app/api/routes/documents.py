@@ -4,6 +4,7 @@ from uuid import UUID
 
 from fastapi import APIRouter, Depends, File, HTTPException, UploadFile, status
 from fastapi.responses import StreamingResponse
+from pydantic import BaseModel
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -294,6 +295,49 @@ async def analyze_document_risk(
         "filename": filename,
         **report,
     }
+
+
+class RejectBody(BaseModel):
+    reason: str = ""
+
+
+@router.patch("/{doc_id}/approve", response_model=DocumentResponse)
+async def approve_document(
+    doc_id: UUID,
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if current_user.role.value != "lawyer":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only lawyers can approve documents.")
+    result = await db.execute(select(Document).where(Document.id == doc_id))
+    doc = result.scalars().first()
+    if not doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found.")
+    doc.status = DocumentStatus.FINALIZED
+    doc.lawyer_id = current_user.id
+    await db.commit()
+    await db.refresh(doc)
+    return doc
+
+
+@router.patch("/{doc_id}/reject", response_model=DocumentResponse)
+async def reject_document(
+    doc_id: UUID,
+    body: RejectBody = RejectBody(),
+    current_user: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    if current_user.role.value != "lawyer":
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Only lawyers can reject documents.")
+    result = await db.execute(select(Document).where(Document.id == doc_id))
+    doc = result.scalars().first()
+    if not doc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Document not found.")
+    doc.status = DocumentStatus.REVISION_REQUESTED
+    doc.lawyer_id = current_user.id
+    await db.commit()
+    await db.refresh(doc)
+    return doc
 
 
 @router.post("/{doc_id}/qa")

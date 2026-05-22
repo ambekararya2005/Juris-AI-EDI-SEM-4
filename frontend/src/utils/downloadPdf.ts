@@ -85,3 +85,17 @@ export const downloadPdf = (content: string, filename: string, metadata?: PDFMet
   const cleanFilename = filename.replace(/[^a-zA-Z0-9-_]/g, '_');
   doc.save(`${cleanFilename}.pdf`);
 };
+
+/** Named export matching Task 4 specification */
+export const downloadLegalDocument = (
+  title: string,
+  content: string,
+  documentType: string
+): void => {
+  const date = new Date().toISOString().slice(0, 10);
+  downloadPdf(content, `${documentType}_${date}`, {
+    title,
+    type: documentType,
+    date,
+  });
+};

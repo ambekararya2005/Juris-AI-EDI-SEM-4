@@ -6,6 +6,7 @@ import ProgressBar from '../../components/ui/ProgressBar';
 import Skeleton from '../../components/ui/Skeleton';
 import { useApp } from '../../context/AppContext';
 import { summarizeDocument, askDocumentQuestion, askDocumentQuestionInline } from '../../lib/api';
+import DisclaimerBanner from '../../components/DisclaimerBanner';
 
 const QA_RESPONSES: Record<string, string> = {
   default: 'Based on the document analysis, this agreement contains several standard commercial clauses with some risk areas you should be aware of. I recommend having a lawyer review Clauses 8.1 and 12.3 specifically.',
@@ -396,6 +397,8 @@ const DocumentSummary: React.FC = () => {
                 </Card>
               ))}
             </div>
+
+            <DisclaimerBanner />
 
             {/* Q&A */}
             <Card className="p-5 dark:bg-slate-800 dark:border-slate-700">

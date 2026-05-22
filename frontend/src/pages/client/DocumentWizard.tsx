@@ -5,8 +5,9 @@ import Stepper from '../../components/ui/Stepper';
 import Button from '../../components/ui/Button';
 import { BAIL_APPLICATION_CONTENT, mockDistricts, mockIPCSections } from '../../data/mockData';
 import { useApp } from '../../context/AppContext';
-import { generateDraft } from '../../lib/api';
+import { generateDraft, streamDraft } from '../../lib/api';
 import { downloadPdf } from '../../utils/downloadPdf';
+import DisclaimerBanner from '../../components/DisclaimerBanner';
 
 const DOC_TYPES = [
   { id: 'Wakalatnama', icon: <Scale size={28} />, desc: 'Power of attorney for your legal representative', label: 'Wakalatnama' },
@@ -54,6 +55,7 @@ const DocumentWizard: React.FC = () => {
   const { addToast } = useApp();
   const [step, setStep] = useState(0);
   const [generating, setGenerating] = useState(false);
+  const [streaming, setStreaming] = useState(false);
   const [generatedContent, setGeneratedContent] = useState<string>(BAIL_APPLICATION_CONTENT);
   const [form, setForm] = useState<FormData>({
     docType: '',
@@ -113,24 +115,44 @@ const DocumentWizard: React.FC = () => {
   const handleGenerate = async () => {
     setStep(3);
     setGenerating(true);
+    setStreaming(false);
+    const apiDocType = DOC_TYPE_API_MAP[form.docType] || 'bail_application';
+    const questionnaire_data: Record<string, unknown> = {
+      full_name: form.fullName,
+      aadhaar_number: form.cnic,
+      fir_number: form.firNumber,
+      police_station: form.policeStation,
+      district: form.district,
+      arrest_date: form.arrestDate,
+      charges: form.charges,
+      bail_grounds: form.grounds,
+      surety_name: form.suretyName,
+      surety_relationship: form.suretyRelationship,
+      surety_aadhaar: form.suretyCnic,
+      additional_facts: form.additionalFacts,
+      ipc_sections: selectedSections.map(s => s.section).join(', '),
+      court: `Sessions Court, ${form.district}`,
+    };
+
+    // Try streaming first
     try {
-      const apiDocType = DOC_TYPE_API_MAP[form.docType] || 'bail_application';
-      const questionnaire_data: Record<string, unknown> = {
-        full_name: form.fullName,
-        aadhaar_number: form.cnic,
-        fir_number: form.firNumber,
-        police_station: form.policeStation,
-        district: form.district,
-        arrest_date: form.arrestDate,
-        charges: form.charges,
-        bail_grounds: form.grounds,
-        surety_name: form.suretyName,
-        surety_relationship: form.suretyRelationship,
-        surety_aadhaar: form.suretyCnic,
-        additional_facts: form.additionalFacts,
-        ipc_sections: selectedSections.map(s => s.section).join(', '),
-        court: `Sessions Court, ${form.district}`,
-      };
+      setStreaming(true);
+      setGeneratedContent('');
+      await streamDraft(apiDocType, questionnaire_data, (chunk) => {
+        setGeneratedContent(prev => prev + chunk);
+      });
+      setStreaming(false);
+      addToast('Document generated and saved to your dashboard.', 'success');
+      setGenerating(false);
+      return;
+    } catch {
+      // streaming failed — fall back to non-streaming
+      setStreaming(false);
+      setGeneratedContent('');
+    }
+
+    // Fallback: non-streaming
+    try {
       const response = await generateDraft({
         doc_type: apiDocType,
         title: `${form.docType} - ${form.fullName || 'Draft'}`,
@@ -371,8 +393,8 @@ const DocumentWizard: React.FC = () => {
       {/* Step 3: Review & Generate */}
       {step === 3 && (
         <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-card border border-border/50 dark:border-slate-700 p-6">
-          {generating ? (
-            /* Generation animation */
+          {generating && !streaming ? (
+            /* Non-streaming generation animation */
             <div className="flex flex-col items-center justify-center py-20 gap-6">
               <div className="relative">
                 <div className="w-24 h-24 rounded-full bg-light-blue dark:bg-slate-700 flex items-center justify-center">
@@ -381,7 +403,7 @@ const DocumentWizard: React.FC = () => {
                 <div className="absolute inset-0 rounded-full border-4 border-t-gold border-r-transparent border-b-transparent border-l-transparent animate-spin" />
               </div>
               <div className="text-center space-y-1">
-                <p className="font-semibold text-dark-text dark:text-slate-100 text-lg">Generating your bail application...</p>
+                <p className="font-semibold text-dark-text dark:text-slate-100 text-lg">Generating your document...</p>
                 <p className="text-sm text-muted-text dark:text-slate-400">Applying legal templates and Maharashtra court formatting</p>
               </div>
               <div className="w-72 h-1.5 bg-light-blue dark:bg-slate-700 rounded-full overflow-hidden">
@@ -402,6 +424,14 @@ const DocumentWizard: React.FC = () => {
                 <h2 className="font-serif text-xl font-bold text-dark-text dark:text-slate-100">Your {form.docType} has been drafted!</h2>
                 <p className="text-sm text-muted-text dark:text-slate-400 mt-1">Review below and take action</p>
               </div>
+
+              {/* Streaming indicator banner */}
+              {streaming && (
+                <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-xl px-4 py-2.5 mb-4">
+                  <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+                  <span className="text-xs font-medium text-amber-700 dark:text-amber-300">Streaming... AI is writing your document in real time</span>
+                </div>
+              )}
 
               {/* 2-column layout */}
               <div className="grid grid-cols-1 lg:grid-cols-5 gap-5 mb-6">
@@ -478,7 +508,7 @@ const DocumentWizard: React.FC = () => {
               </div>
 
               {/* Action buttons */}
-              <div className="flex flex-wrap gap-3">
+              <div className="flex flex-wrap gap-3 mb-4">
                 <Button variant="outline" size="sm" onClick={handleDownloadPDF}>
                   <Download size={14} /> Download PDF
                 </Button>
@@ -489,6 +519,8 @@ const DocumentWizard: React.FC = () => {
                   ✏️ Edit Draft
                 </Button>
               </div>
+
+              <DisclaimerBanner />
             </div>
           )}
         </div>

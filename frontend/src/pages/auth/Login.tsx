@@ -274,6 +274,34 @@ const Login: React.FC = () => {
               }
             </button>
           </div>
+
+          {/* Try Demo */}
+          {!isSignUp && (
+            <div className="mt-6 pt-5 border-t border-border">
+              <p className="text-center text-xs text-muted-text mb-3">
+                Just exploring? Use the demo account
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="lg"
+                className="w-full"
+                loading={loading}
+                onClick={async () => {
+                  setLoading(true);
+                  setError(null);
+                  setSuccessMsg(null);
+                  const { error: demoErr } = await signIn('demo@jurisai.in', 'Demo@1234');
+                  if (demoErr) {
+                    setError('Demo account unavailable — please register or check credentials.');
+                  }
+                  setLoading(false);
+                }}
+              >
+                Try Demo (demo@jurisai.in)
+              </Button>
+            </div>
+          )}
         </div>
       </div>
     </div>
